@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -48,7 +48,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
       setLoadingRoom(true);
       const fetched = await getRoom(roomId);
       if (!fetched) {
-        setError("Sala não encontrada ou removida.");
+        setError("Sala nao encontrada ou removida.");
       }
       setRoom(fetched);
       setLoadingRoom(false);
@@ -103,7 +103,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
       });
     } catch (updateError) {
       console.error(updateError);
-      setError("Não foi possível atualizar a pergunta agora.");
+      setError("Nao foi possivel atualizar a pergunta agora.");
     } finally {
       setProcessing(false);
     }
@@ -123,26 +123,24 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
       await batch.commit();
     } catch (bulkError) {
       console.error(bulkError);
-      setError("Não foi possível aplicar a ação em lote.");
+      setError("Nao foi possivel aplicar a acao em lote.");
     } finally {
       setProcessing(false);
     }
   };
 
   const handleClear = async () => {
-    if (!window.confirm("Remover todas as perguntas? Esta ação não pode ser desfeita.")) return;
-
     setProcessing(true);
+    setError(null);
     try {
-      const snapshot = await getDocs(collection(db, "rooms", roomId, "questions"));
+      const questionsRef = collection(db, "rooms", roomId, "questions");
+      const snapshot = await getDocs(questionsRef);
       const batch = writeBatch(db);
-      snapshot.docs.forEach((document) => {
-        batch.delete(document.ref);
-      });
+      snapshot.forEach((document) => batch.delete(document.ref));
       await batch.commit();
     } catch (clearError) {
       console.error(clearError);
-      setError("Não foi possível limpar o histórico agora.");
+      setError("Nao foi possivel limpar o historico agora.");
     } finally {
       setProcessing(false);
     }
@@ -151,7 +149,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
   if (loadingRoom) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
-        <p className="animate-pulse text-sm">Preparando moderação...</p>
+        <p className="animate-pulse text-sm">Carregando sala...</p>
       </div>
     );
   }
@@ -160,21 +158,21 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-slate-200">
         <div className="max-w-sm rounded-3xl border border-slate-800/80 bg-slate-900/60 p-8">
-          <p className="text-base font-semibold">{error || "Sala inacessível."}</p>
+          <p className="text-base font-semibold">{error ?? "Sala nao encontrada."}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ProtectedRoute allowedEmails={room.allowedEmails}>
+    <ProtectedRoute>
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-10 px-6 py-16">
         <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
           <div className="flex flex-col gap-2">
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Moderando</p>
             <h1 className="text-2xl font-semibold text-slate-100">{room.title}</h1>
             <p className="text-sm text-slate-400">
-              Organização {room.organizationName} · {counts.pending} perguntas pendentes
+              Organizacao {room.organizationName} - {counts.pending} perguntas pendentes
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
@@ -197,7 +195,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
               disabled={processing || counts.all === 0}
               className="inline-flex items-center justify-center rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Limpar histórico
+              Limpar historico
             </button>
             <SignOutButton />
           </div>
@@ -237,8 +235,8 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                 <div className="flex flex-col gap-2">
                   <p className="text-sm text-slate-100">{question.text}</p>
                   <p className="text-xs text-slate-500">
-                    {question.isAnonymous ? "Anônimo" : question.participantName || "Participante"}
-                    {question.createdAt && ` · ${question.createdAt.toLocaleTimeString()}`}
+                    {question.isAnonymous ? "Anonimo" : question.participantName || "Participante"}
+                    {question.createdAt && ` - ${question.createdAt.toLocaleTimeString()}`}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
@@ -289,4 +287,3 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     </ProtectedRoute>
   );
 };
-

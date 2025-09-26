@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "react-qr-code";
-import { onSnapshot, getDoc } from "firebase/firestore";
-import { signOut } from "firebase/auth";
+import { doc, getDoc, onSnapshot } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { createRoom, roomsByEmailQuery, roomDoc, type Room } from "@/lib/rooms";
+import { createRoom, roomsByEmailQuery, type Room } from "@/lib/rooms";
 import { useAuth } from "@/context/AuthContext";
 import { SignOutButton } from "@/components/SignOutButton";
-import { auth } from "@/lib/firebase";
+import { db } from "@/lib/firebase";
 
 interface RoomFormState {
   title: string;
@@ -72,7 +71,8 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchProfile = async () => {
       if (!user) return;
-      const snapshot = await getDoc(roomDoc(user.uid));
+      const profileRef = doc(db, "users", user.uid);
+      const snapshot = await getDoc(profileRef);
       if (snapshot.exists()) {
         const data = snapshot.data() as { organizationName?: string };
         if (data.organizationName) {
@@ -94,7 +94,7 @@ export default function DashboardPage() {
     try {
       const roomId = await createRoom({
         title: form.title,
-        organizationName: organizationName || user.displayName || "",
+        organizationName: organizationName || user.displayName || "Organização",
         organizationEmail: user.email,
         moderatorName: form.moderatorName || undefined,
         moderatorEmail: form.moderatorEmail || undefined,

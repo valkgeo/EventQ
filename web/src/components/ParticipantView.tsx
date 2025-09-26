@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -43,7 +43,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       setIsRoomLoading(true);
       const room = await getRoom(roomId);
       if (!room) {
-        setError("Sala não encontrada ou indisponível.");
+        setError("Sala nao encontrada ou indisponivel.");
       } else {
         setRoomName(room.title);
       }
@@ -112,7 +112,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       setFeedback("Pergunta enviada. Obrigado!");
     } catch (submissionError) {
       console.error(submissionError);
-      setError("Não foi possível enviar sua pergunta agora.");
+      setError("Nao foi possivel enviar sua pergunta agora.");
     } finally {
       setSending(false);
     }
@@ -125,7 +125,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       setFeedback("Pergunta removida.");
     } catch (removeError) {
       console.error(removeError);
-      setError("Não foi possível remover agora.");
+      setError("Nao foi possivel remover agora.");
     }
   };
 
@@ -169,10 +169,10 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
               rows={4}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Qual é a sua dúvida?"
+              placeholder="Qual e a sua duvida?"
               className="resize-none rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
             />
-            <p className="text-xs text-slate-500">O EventQ filtra palavrões automaticamente antes de enviar.</p>
+            <p className="text-xs text-slate-500">O EventQ filtra palavroes automaticamente antes de enviar.</p>
           </div>
 
           <label className="inline-flex cursor-pointer items-center gap-3 text-sm text-slate-300">
@@ -182,7 +182,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
               onChange={(event) => setIsAnonymous(event.target.checked)}
               className="h-4 w-4 rounded border border-slate-600 bg-slate-950 text-slate-100 focus:ring-slate-400"
             />
-            Enviar como anônimo
+            Enviar como anonimo
           </label>
 
           {!isAnonymous && (
@@ -194,7 +194,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
                 id="name"
                 value={participantName}
                 onChange={(event) => setParticipantName(event.target.value)}
-                placeholder="Como você gostaria de ser identificado"
+                placeholder="Como voce gostaria de ser identificado"
                 className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
               />
             </div>
@@ -216,12 +216,12 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       <section className="mb-12 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-8 shadow-xl backdrop-blur">
         <header className="mb-4 flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-slate-100">Minhas perguntas</h2>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">visível apenas para você</p>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">visivel apenas para voce</p>
         </header>
 
         {questions.length === 0 ? (
           <p className="text-sm text-slate-400">
-            Nenhuma pergunta enviada ainda. Compartilhe sua primeira dúvida com o moderador!
+            Nenhuma pergunta enviada ainda. Compartilhe sua primeira duvida com o moderador!
           </p>
         ) : (
           <ul className="grid gap-4">

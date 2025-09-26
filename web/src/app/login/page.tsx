@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,11 +11,11 @@ const mapAuthError = (code: string) => {
     case AuthErrorCodes.INVALID_PASSWORD:
     case AuthErrorCodes.INVALID_EMAIL:
     case AuthErrorCodes.USER_DELETED:
-      return "Credenciais inválidas. Confira e tente novamente.";
+      return "Credenciais invalidas. Confira e tente novamente.";
     case AuthErrorCodes.TOO_MANY_ATTEMPTS_TRY_LATER:
       return "Muitas tentativas. Aguarde um momento e tente novamente.";
     default:
-      return "Não foi possível iniciar a sessão agora.";
+      return "Nao foi possivel iniciar a sessao agora.";
   }
 };
 
@@ -52,8 +52,8 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-md rounded-3xl border border-slate-800/80 bg-slate-900/40 p-10 shadow-xl backdrop-blur">
         <div className="mb-8 flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-semibold text-slate-100">Que bom ter você de volta.</h1>
-          <p className="text-sm text-slate-400">Acesse o painel e conduza perguntas com elegância.</p>
+          <h1 className="text-2xl font-semibold text-slate-100">Que bom ter voce de volta.</h1>
+          <p className="text-sm text-slate-400">Acesse o painel e conduza perguntas com elegancia.</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
@@ -98,7 +98,7 @@ export default function LoginPage() {
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-slate-500">
-          Ainda não tem acesso? <Link href="/register" className="text-slate-200 underline">Solicite cadastro</Link>.
+          Ainda nao tem acesso? <Link href="/register" className="text-slate-200 underline">Solicite cadastro</Link>.
         </p>
       </div>
     </div>

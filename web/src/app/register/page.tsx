@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,11 +14,11 @@ import { auth, db } from "@/lib/firebase";
 const mapRegisterError = (code: string) => {
   switch (code) {
     case AuthErrorCodes.EMAIL_EXISTS:
-      return "Este e-mail já está cadastrado.";
+      return "Este e-mail ja esta cadastrado.";
     case AuthErrorCodes.INVALID_PASSWORD:
       return "A senha precisa de pelo menos 6 caracteres.";
     default:
-      return "Não foi possível concluir o cadastro.";
+      return "Nao foi possivel concluir o cadastro.";
   }
 };
 
@@ -64,15 +64,15 @@ export default function RegisterPage() {
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-xl rounded-3xl border border-slate-800/80 bg-slate-900/40 p-10 shadow-xl backdrop-blur">
         <div className="mb-8 flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-semibold text-slate-100">Crie seu espaço EventQ</h1>
+          <h1 className="text-2xl font-semibold text-slate-100">Crie seu espaco EventQ</h1>
           <p className="text-sm text-slate-400">
-            Cadastre a organização responsável e um moderador principal para começar agora mesmo.
+            Cadastre a organizacao responsavel e um moderador principal para comecar agora mesmo.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="grid gap-4">
           <div className="flex flex-col gap-2">
             <label htmlFor="organization" className="text-xs uppercase tracking-[0.3em] text-slate-500">
-              Organização
+              Organizacao
             </label>
             <input
               id="organization"
@@ -155,7 +155,7 @@ export default function RegisterPage() {
           </button>
         </form>
         <p className="mt-6 text-center text-xs text-slate-500">
-          Já tem acesso? <Link href="/login" className="text-slate-200 underline">Entrar</Link>.
+          Ja tem acesso? <Link href="/login" className="text-slate-200 underline">Entrar</Link>.
         </p>
       </div>
     </div>

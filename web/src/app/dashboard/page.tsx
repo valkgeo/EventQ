@@ -1,4 +1,4 @@
-"use client";
+ï»¿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -94,7 +94,7 @@ export default function DashboardPage() {
     try {
       const roomId = await createRoom({
         title: form.title,
-        organizationName: organizationName || user.displayName || "Organização",
+        organizationName: organizationName || user.displayName || "Organizacao",
         organizationEmail: user.email,
         moderatorName: form.moderatorName || undefined,
         moderatorEmail: form.moderatorEmail || undefined,
@@ -107,7 +107,7 @@ export default function DashboardPage() {
       router.push(`/rooms/${roomId}/moderate`);
     } catch (error) {
       console.error(error);
-      setFeedback("Não foi possível criar a sala agora.");
+      setFeedback("Nao foi possivel criar a sala agora.");
     } finally {
       setCreating(false);
     }
@@ -127,24 +127,32 @@ export default function DashboardPage() {
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
-        <p className="animate-pulse text-sm">Carregando painel...</p>
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-slate-200">
+        <p className="text-sm">Carregando painel...</p>
       </div>
     );
   }
 
+  const handleOpenForm = () => {
+    setFeedback(null);
+    setFormOpen(true);
+  };
+
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
-      <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-2">
-          <h1 className="text-2xl font-semibold text-slate-100">Olá, {user.displayName || user.email}</h1>
+          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+            {organizationName || user.displayName || "Sua organizacao"}
+          </p>
+          <h1 className="text-3xl font-semibold text-slate-100">Salas e moderacao</h1>
           <p className="text-sm text-slate-400">
-            Gerencie salas, compartilhe QR Codes e acompanhe perguntas em tempo real.
+            Crie novas salas, distribua QR Codes e acompanhe perguntas aprovando, rejeitando ou limpando filas.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <button
-            onClick={() => setFormOpen(true)}
+            onClick={handleOpenForm}
             className="inline-flex items-center justify-center rounded-full bg-slate-100 px-5 py-2 text-sm font-medium text-slate-900 transition hover:bg-white"
           >
             Nova sala
@@ -192,7 +200,7 @@ export default function DashboardPage() {
               placeholder="moderador@evento.com"
               className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
             />
-            <p className="text-xs text-slate-500">Opcional. Adicione para conceder acesso direto à moderação.</p>
+            <p className="text-xs text-slate-500">Opcional. Adicione para conceder acesso direto a moderacao.</p>
           </div>
           <div className="flex items-center justify-end gap-3">
             <button
@@ -255,13 +263,13 @@ export default function DashboardPage() {
                     href={participantLink}
                     className="inline-flex items-center justify-center rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white"
                   >
-                    Abrir página do participante
+                    Abrir pagina do participante
                   </Link>
                   <Link
                     href={moderateLink}
                     className="inline-flex items-center justify-center rounded-full bg-slate-100 px-4 py-2 text-xs font-medium text-slate-900 transition hover:bg-white"
                   >
-                    Acessar moderação
+                    Acessar moderacao
                   </Link>
                 </div>
               </article>

@@ -14,7 +14,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getRoom } from "@/lib/rooms";
-import { useAuth } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignOutButton } from "@/components/SignOutButton";
 
@@ -37,7 +36,6 @@ const filterLabels: Record<FilterOption, string> = {
 };
 
 export const ModeratorView = ({ roomId }: { roomId: string }) => {
-  const { user } = useAuth();
   const [room, setRoom] = useState<Awaited<ReturnType<typeof getRoom>> | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [questions, setQuestions] = useState<ModeratedQuestion[]>([]);
@@ -291,3 +289,4 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     </ProtectedRoute>
   );
 };
+

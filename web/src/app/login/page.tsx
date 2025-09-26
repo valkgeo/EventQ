@@ -1,8 +1,8 @@
 ﻿"use client";
 
 import Link from "next/link";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
 import { signInWithEmailAndPassword, AuthErrorCodes } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
@@ -19,7 +19,7 @@ const mapAuthError = (code: string) => {
   }
 };
 
-export default function LoginPage() {
+const LoginForm = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -49,54 +49,62 @@ export default function LoginPage() {
   };
 
   return (
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <label htmlFor="email" className="text-xs uppercase tracking-[0.3em] text-slate-500">
+          E-mail
+        </label>
+        <input
+          id="email"
+          type="email"
+          required
+          autoComplete="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+          placeholder="voce@empresa.com"
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="password" className="text-xs uppercase tracking-[0.3em] text-slate-500">
+          Senha
+        </label>
+        <input
+          id="password"
+          type="password"
+          required
+          autoComplete="current-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+          placeholder="********"
+        />
+      </div>
+
+      {error && <p className="rounded-2xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-3 text-sm font-medium text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+      >
+        {submitting ? "Entrando..." : "Entrar"}
+      </button>
+    </form>
+  );
+};
+
+export default function LoginPage() {
+  return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-md rounded-3xl border border-slate-800/80 bg-slate-900/40 p-10 shadow-xl backdrop-blur">
         <div className="mb-8 flex flex-col gap-2 text-center">
           <h1 className="text-2xl font-semibold text-slate-100">Que bom ter voce de volta.</h1>
           <p className="text-sm text-slate-400">Acesse o painel e conduza perguntas com elegancia.</p>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-            <label htmlFor="email" className="text-xs uppercase tracking-[0.3em] text-slate-500">
-              E-mail
-            </label>
-            <input
-              id="email"
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-              placeholder="voce@empresa.com"
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="password" className="text-xs uppercase tracking-[0.3em] text-slate-500">
-              Senha
-            </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
-              placeholder="********"
-            />
-          </div>
-
-          {error && <p className="rounded-2xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-3 text-sm font-medium text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? "Entrando..." : "Entrar"}
-          </button>
-        </form>
+        <Suspense fallback={<p className="text-sm text-slate-400">Carregando formulario...</p>}>
+          <LoginForm />
+        </Suspense>
         <p className="mt-6 text-center text-xs text-slate-500">
           Ainda nao tem acesso? <Link href="/register" className="text-slate-200 underline">Solicite cadastro</Link>.
         </p>

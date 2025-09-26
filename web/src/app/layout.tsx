@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+ï»¿import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "EventQ",
   description:
-    "Gerencie perguntas em tempo real em eventos com moderação elegante e QR Code para participantes.",
+    "Gerencie perguntas em tempo real em eventos com moderacao elegante e QR Code para participantes.",
 };
 
 export default function RootLayout({

@@ -1,12 +1,12 @@
-import Link from "next/link";
+ï»¿import Link from "next/link";
 
 const features = [
   {
     title: "Perguntas sem atrito",
-    description: "Participantes entram via QR Code e enviam perguntas anônimas ou identificadas sem ver os outros envios.",
+    description: "Participantes entram via QR Code e enviam perguntas anonimas ou identificadas sem ver os outros envios.",
   },
   {
-    title: "Moderação em tempo real",
+    title: "Moderacao em tempo real",
     description: "Aceite, recuse ou limpe filas inteiras com poucos cliques enquanto acompanha o evento.",
   },
   {
@@ -23,10 +23,10 @@ export default function Home() {
           EventQ
         </Link>
         <h1 className="text-balance text-4xl font-semibold tracking-tight text-slate-100 sm:text-6xl">
-          Perguntas inteligentes para eventos memoráveis.
+          Perguntas inteligentes para eventos memoraveis.
         </h1>
         <p className="max-w-2xl text-balance text-base text-slate-400 sm:text-lg">
-          Crie salas em segundos, distribua um QR Code elegante e mantenha a conversa fluindo com moderação refinada.
+          Crie salas em segundos, distribua um QR Code elegante e mantenha a conversa fluindo com moderacao refinada.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
           <Link
@@ -34,13 +34,13 @@ export default function Home() {
             className="group inline-flex items-center justify-center gap-2 rounded-full bg-slate-100 px-6 py-3 text-sm font-medium text-slate-900 transition hover:bg-white"
           >
             Comece agora
-            <span className="transition group-hover:translate-x-1">?</span>
+            <span className="transition group-hover:translate-x-1">-></span>
           </Link>
           <Link
             href="/login"
             className="inline-flex items-center justify-center rounded-full border border-slate-600 px-6 py-3 text-sm font-medium text-slate-300 transition hover:border-slate-400 hover:text-white"
           >
-            Já tenho uma conta
+            Ja tenho uma conta
           </Link>
         </div>
       </header>
@@ -63,11 +63,11 @@ export default function Home() {
           </div>
           <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-5">
             <p className="font-semibold text-slate-200">2. Coleta discreta</p>
-            <p className="mt-2 text-slate-400">Participantes enviam perguntas e acompanham apenas o próprio histórico.</p>
+            <p className="mt-2 text-slate-400">Participantes enviam perguntas e acompanham apenas o proprio historico.</p>
           </div>
           <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-5">
             <p className="font-semibold text-slate-200">3. Modere ao vivo</p>
-            <p className="mt-2 text-slate-400">Aprove ou descarte perguntas com filtros automáticos de linguagem.</p>
+            <p className="mt-2 text-slate-400">Aprove ou descarte perguntas com filtros automaticos de linguagem.</p>
           </div>
         </div>
       </section>

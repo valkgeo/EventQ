@@ -87,7 +87,6 @@ export default function DashboardPage() {
           if (user.displayName) {
             setForm((prev) => (prev.moderatorName ? prev : { ...prev, moderatorName: user.displayName ?? "" }));
           }
-          }
         }
       })
       .catch((err) => console.error(err));

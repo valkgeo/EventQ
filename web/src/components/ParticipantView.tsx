@@ -23,7 +23,6 @@ import { auth, db } from "@/lib/firebase";
 import { getRoom } from "@/lib/rooms";
 import { sanitizeQuestion } from "@/lib/profanityFilter";
 import { signInAnonymously } from "firebase/auth";
-import { useParticipantId } from "@/hooks/useParticipantId";
 import { useAuth } from "@/context/AuthContext";
 
 const JOINED_ROOMS_KEY = "eventq-joined-rooms";
@@ -46,8 +45,7 @@ const readJoinedRooms = () => {
   try {
     const stored = window.localStorage.getItem(JOINED_ROOMS_KEY);
     return stored ? (JSON.parse(stored) as string[]) : [];
-  } catch (error) {
-    console.error(error);
+  } catch {
     return [];
   }
 };
@@ -58,8 +56,11 @@ const writeJoinedRooms = (rooms: string[]) => {
 };
 
 export const ParticipantView = ({ roomId }: { roomId: string }) => {
-  const participantId = useParticipantId();
+  // >>> declare user first
   const { user, loading: authLoading } = useAuth();
+  // >>> then compute participantId from the authenticated user
+  const participantId: string | null = user?.uid ?? null;
+
   const [roomName, setRoomName] = useState<string>("");
   const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
   const [roomError, setRoomError] = useState<string | null>(null);
@@ -74,6 +75,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const [likingQuestionId, setLikingQuestionId] = useState<string | null>(null);
   const attemptedAnonymousSignIn = useRef(false);
   const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   const clearFeedbackTimer = () => {
     if (feedbackTimeoutRef.current) {
@@ -166,8 +168,8 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     };
   }, [roomId, authLoading, user]);
 
-  useEffect(() => {
-    if (!participantId || isRoomLoading || roomError) return;
+    useEffect(() => {
+    if (!participantId || !roomId || isRoomLoading || roomError) return;
 
     const questionsRef = collection(db, "rooms", roomId, "questions");
     const roomQuery = query(
@@ -176,31 +178,33 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(
-      roomQuery,
-      { includeMetadataChanges: true },
-      (snapshot) => {
-        const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-          const data = document.data();
-          return {
-            id: document.id,
-            text: (data.text as string) ?? "",
-            status: (data.status as string) ?? "pending",
-            isAnonymous: Boolean(data.isAnonymous),
-            participantName: (data.participantName as string | undefined) || undefined,
-            participantId: (data.participantId as string | undefined) || undefined,
-            createdAt: data.createdAt?.toDate?.(),
-            highlighted: Boolean(data.highlighted),
-            likeCount: typeof data.likeCount === "number" ? data.likeCount : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
-            likedBy: (data.likedBy as string[]) ?? [],
-          };
-        });
-        setQuestions(entries);
-      }
-    );
+    const unsubscribe = onSnapshot(roomQuery, (snapshot) => {
+      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
+        const data = document.data() as any;
+        return {
+          id: document.id,
+          text: data.text ?? "",
+          status: data.status ?? "pending",
+          isAnonymous: !!data.isAnonymous,
+          participantName: (data.participantName as string | undefined) || undefined,
+          participantId: (data.participantId as string | undefined) || undefined,
+          createdAt: data.createdAt?.toDate?.(),
+          highlighted: !!data.highlighted,
+          likeCount:
+            typeof data.likeCount === "number"
+              ? data.likeCount
+              : Array.isArray(data.likedBy)
+              ? data.likedBy.length
+              : 0,
+          likedBy: (data.likedBy as string[]) ?? [],
+        };
+      });
+      setQuestions(entries);
+    });
 
     return () => unsubscribe();
   }, [participantId, roomId, isRoomLoading, roomError]);
+
 
   useEffect(() => {
     if (isRoomLoading || roomError) return;
@@ -260,9 +264,9 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     try {
       const cleaned = sanitizeQuestion(question);
       const questionsRef = collection(db, "rooms", roomId, "questions");
-      const docRef = await addDoc(questionsRef, {
+      await addDoc(questionsRef, {
         text: cleaned,
-        participantId,
+        participantId, // usa o user.uid
         participantName: isAnonymous ? null : participantName.trim() || null,
         isAnonymous,
         status: "pending",
@@ -274,21 +278,6 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         likeCount: 0,
       });
 
-      setQuestions((current) => [
-        {
-          id: docRef.id,
-          text: cleaned,
-          status: "pending",
-          isAnonymous,
-          participantName: isAnonymous ? undefined : participantName.trim() || undefined,
-          participantId,
-          createdAt: new Date(),
-          highlighted: false,
-          likeCount: 0,
-          likedBy: [],
-        },
-        ...current,
-      ]);
 
       setQuestion("");
       setParticipantName("");

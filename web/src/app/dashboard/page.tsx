@@ -2,7 +2,7 @@
 
 import QRCode from "react-qr-code";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { collection, doc, getDoc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import {
@@ -84,7 +84,6 @@ export default function DashboardPage() {
         if (!snapshot.exists()) {
           if (user.displayName) {
             setOrganizationName((current) => current || (user.displayName ?? ""));
-            setForm((prev) => (prev.moderatorName ? prev : { ...prev, moderatorName: user.displayName ?? "" }));
           }
           return;
         }
@@ -96,9 +95,6 @@ export default function DashboardPage() {
           setOrganizationName(user.displayName ?? "");
         }
 
-        if (user.displayName) {
-          setForm((prev) => (prev.moderatorName ? prev : { ...prev, moderatorName: user.displayName ?? "" }));
-        }
       })
       .catch((err) => console.error(err));
   }, [user]);
@@ -561,3 +557,7 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
+
+
+
+

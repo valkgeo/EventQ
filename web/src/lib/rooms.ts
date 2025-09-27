@@ -1,13 +1,15 @@
-import { nanoid } from "nanoid";
+﻿import { nanoid } from "nanoid";
 import {
   collection,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   deleteDoc,
   query,
   where,
+  writeBatch,
   type Query,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -82,4 +84,17 @@ export const roomsByEmailQuery = (email: string) =>
 
 export const deleteRoom = async (roomId: string) => {
   await deleteDoc(roomDoc(roomId));
+};
+
+export const deleteRoomWithQuestions = async (roomId: string) => {
+  const questionsRef = collection(db, "rooms", roomId, "questions");
+  const snapshot = await getDocs(questionsRef);
+  const batch = writeBatch(db);
+
+  snapshot.forEach((questionDoc) => {
+    batch.delete(questionDoc.ref);
+  });
+
+  batch.delete(roomDoc(roomId));
+  await batch.commit();
 };

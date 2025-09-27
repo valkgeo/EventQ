@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { onSnapshot, orderBy, query } from "firebase/firestore";
-import { roomsCollection, type Room } from "@/lib/rooms";
+import { roomsCollection, type Room, deleteRoomWithQuestions } from "@/lib/rooms";
 import { useAuth } from "@/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignOutButton } from "@/components/SignOutButton";
@@ -16,6 +16,8 @@ const hasModerationAccess = (room: Room, email: string | null | undefined) => {
 export default function HallPage() {
   const { user } = useAuth();
   const [rooms, setRooms] = useState<Room[]>([]);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const [removingRoomId, setRemovingRoomId] = useState<string | null>(null);
 
   useEffect(() => {
     const hallQuery = query(roomsCollection, orderBy("createdAt", "desc"));
@@ -47,6 +49,28 @@ export default function HallPage() {
       .map((room) => room.id);
   }, [rooms, email]);
 
+  const isOwner = (room: Room) => email && room.organizationEmail.toLowerCase() === email.toLowerCase();
+
+  const handleDeleteRoom = async (room: Room) => {
+    if (!isOwner(room)) return;
+    const confirmation = window.confirm(
+      `Deseja excluir a sala "${room.title}" e todo o historico de perguntas?`
+    );
+    if (!confirmation) return;
+
+    setRemovingRoomId(room.id);
+    setFeedback(null);
+    try {
+      await deleteRoomWithQuestions(room.id);
+      setFeedback(`Sala "${room.title}" removida com sucesso.`);
+    } catch (error) {
+      console.error(error);
+      setFeedback("Nao foi possivel excluir a sala agora.");
+    } finally {
+      setRemovingRoomId(null);
+    }
+  };
+
   return (
     <ProtectedRoute>
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
@@ -69,6 +93,12 @@ export default function HallPage() {
           </div>
         </header>
 
+        {feedback && (
+          <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600 shadow-sm">
+            {feedback}
+          </div>
+        )}
+
         <section className="grid gap-6 pb-16 sm:grid-cols-2">
           {rooms.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-sm text-slate-500 shadow-sm">
@@ -77,6 +107,7 @@ export default function HallPage() {
           ) : (
             rooms.map((room) => {
               const canModerate = moderatableRoomIds.includes(room.id);
+              const owner = isOwner(room);
               return (
                 <article
                   key={room.id}
@@ -107,6 +138,15 @@ export default function HallPage() {
                       >
                         Acessar moderacao
                       </Link>
+                    )}
+                    {owner && (
+                      <button
+                        onClick={() => void handleDeleteRoom(room)}
+                        disabled={removingRoomId === room.id}
+                        className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {removingRoomId === room.id ? "Excluindo..." : "Excluir sala"}
+                      </button>
                     )}
                   </div>
                 </article>

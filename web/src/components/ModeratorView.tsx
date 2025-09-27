@@ -1,7 +1,10 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
+
+
   collection,
   doc,
   getDocs,
@@ -12,10 +15,12 @@ import {
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { getRoom } from "@/lib/rooms";
+import { getRoom, deleteRoomWithQuestions } from "@/lib/rooms";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SignOutButton } from "@/components/SignOutButton";
+import { useAuth } from "@/context/AuthContext";
 
 interface ModeratedQuestion {
   id: string;
@@ -24,9 +29,13 @@ interface ModeratedQuestion {
   createdAt?: Date;
   isAnonymous: boolean;
   participantName?: string;
+  highlighted: boolean;
+  likeCount?: number;
 }
 
 type FilterOption = "all" | "pending" | "accepted" | "rejected";
+
+
 
 const filterLabels: Record<FilterOption, string> = {
   all: "Todas",
@@ -36,12 +45,15 @@ const filterLabels: Record<FilterOption, string> = {
 };
 
 export const ModeratorView = ({ roomId }: { roomId: string }) => {
+  const router = useRouter();
+  const { user } = useAuth();
   const [room, setRoom] = useState<Awaited<ReturnType<typeof getRoom>> | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [questions, setQuestions] = useState<ModeratedQuestion[]>([]);
   const [filter, setFilter] = useState<FilterOption>("pending");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deletingRoom, setDeletingRoom] = useState(false);
 
   useEffect(() => {
     const loadRoom = async () => {
@@ -70,6 +82,8 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
           isAnonymous: Boolean(data.isAnonymous),
           participantName: (data.participantName as string | undefined) || undefined,
           createdAt: data.createdAt?.toDate?.(),
+          highlighted: Boolean(data.highlighted),
+          likeCount: typeof data.likeCount === "number" ? data.likeCount : undefined,
         };
       });
       setQuestions(entries);
@@ -104,6 +118,22 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     } catch (updateError) {
       console.error(updateError);
       setError("Nao foi possivel atualizar a pergunta agora.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleToggleHighlight = async (question: ModeratedQuestion) => {
+    setProcessing(true);
+    try {
+      await updateDoc(doc(db, "rooms", roomId, "questions", question.id), {
+        highlighted: !question.highlighted,
+        highlightedAt: !question.highlighted ? serverTimestamp() : null,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (highlightError) {
+      console.error(highlightError);
+      setError("Nao foi possivel alterar o destaque agora.");
     } finally {
       setProcessing(false);
     }
@@ -146,6 +176,22 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     }
   };
 
+  const handleDeleteRoom = async () => {
+    if (!room) return;
+    const confirmation = window.confirm("Tem certeza que deseja excluir esta sala? Essa acao remove todas as perguntas.");
+    if (!confirmation) return;
+
+    setDeletingRoom(true);
+    try {
+      await deleteRoomWithQuestions(roomId);
+      router.push("/hall");
+    } catch (deleteError) {
+      console.error(deleteError);
+      setError("Nao foi possivel excluir a sala agora.");
+      setDeletingRoom(false);
+    }
+  };
+
   if (loadingRoom) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white/70 text-slate-500">
@@ -164,10 +210,12 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     );
   }
 
+  const isOwner = user?.email?.toLowerCase() === room.organizationEmail.toLowerCase();
+
   return (
     <ProtectedRoute allowedEmails={room.allowedEmails}>
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-10 px-6 py-16">
-        <header className="flex flex-col justify-between gap-6 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:flex-row sm:items-center">
+        <header className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Moderando</p>
             <h1 className="text-2xl font-semibold text-slate-900">{room.title}</h1>
@@ -176,6 +224,21 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/hall"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+            >
+              Voltar ao hall
+            </Link>
+            {isOwner && (
+              <button
+                onClick={handleDeleteRoom}
+                disabled={deletingRoom || processing}
+                className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {deletingRoom ? "Excluindo..." : "Excluir sala"}
+              </button>
+            )}
             <button
               onClick={() => void handleBulkStatus("accepted")}
               disabled={processing || counts.pending === 0}
@@ -230,7 +293,11 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
             filteredQuestions.map((question) => (
               <article
                 key={question.id}
-                className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-lg backdrop-blur"
+                className={`flex flex-col gap-4 rounded-3xl border p-6 shadow-lg backdrop-blur ${
+                  question.highlighted
+                    ? "border-violet-200 bg-violet-50/80"
+                    : "border-slate-200 bg-white/90"
+                }`}
               >
                 <div className="flex flex-col gap-2">
                   <p className="text-sm text-slate-900">{question.text}</p>
@@ -238,6 +305,11 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                     {question.isAnonymous ? "Anonimo" : question.participantName || "Participante"}
                     {question.createdAt && ` – ${question.createdAt.toLocaleTimeString()}`}
                   </p>
+                  {question.likeCount !== undefined && question.likeCount > 0 && (
+                    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-medium text-violet-600">
+                      Destaque com {question.likeCount} {question.likeCount === 1 ? "curtida" : "curtidas"}
+                    </span>
+                  )}
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <span
@@ -278,6 +350,17 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                       Voltar para pendente
                     </button>
                   )}
+                  <button
+                    onClick={() => void handleToggleHighlight(question)}
+                    disabled={processing}
+                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-medium transition ${
+                      question.highlighted
+                        ? "border border-violet-300 bg-white text-violet-600 hover:border-violet-400"
+                        : "bg-violet-600 text-white shadow-lg shadow-violet-600/20 hover:bg-violet-500"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {question.highlighted ? "Remover destaque" : "Destacar"}
+                  </button>
                 </div>
               </article>
             ))

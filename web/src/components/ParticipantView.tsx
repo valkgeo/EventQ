@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
+  arrayRemove,
+  arrayUnion,
   collection,
   deleteDoc,
   doc,
@@ -11,7 +13,9 @@ import {
   orderBy,
   query,
   serverTimestamp,
+  updateDoc,
   where,
+  increment,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { getRoom } from "@/lib/rooms";
@@ -26,6 +30,9 @@ interface ParticipantQuestion {
   createdAt?: Date;
   isAnonymous: boolean;
   participantName?: string;
+  highlighted?: boolean;
+  likeCount?: number;
+  likedBy?: string[];
 }
 
 export const ParticipantView = ({ roomId }: { roomId: string }) => {
@@ -35,12 +42,14 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
   const [isRoomLoading, setIsRoomLoading] = useState(true);
   const [question, setQuestion] = useState("");
-  const [isAnonymous, setIsAnonymous] = useState(true);
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [participantName, setParticipantName] = useState("");
   const [sending, setSending] = useState(false);
   const [questions, setQuestions] = useState<ParticipantQuestion[]>([]);
+  const [highlightedQuestions, setHighlightedQuestions] = useState<ParticipantQuestion[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [likingQuestionId, setLikingQuestionId] = useState<string | null>(null);
 
   useEffect(() => {
     const loadRoom = async () => {
@@ -68,30 +77,55 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(
-      roomQuery,
-      (snapshot) => {
-        const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-          const data = document.data();
-          return {
-            id: document.id,
-            text: (data.text as string) ?? "",
-            status: (data.status as string) ?? "pending",
-            isAnonymous: Boolean(data.isAnonymous),
-            participantName: (data.participantName as string | undefined) || undefined,
-            createdAt: data.createdAt?.toDate?.(),
-          };
-        });
-        setQuestions(entries);
-      },
-      (subscriptionError) => {
-        console.error(subscriptionError);
-        setError("Nao foi possivel carregar seu historico agora.");
-      }
-    );
+    const unsubscribe = onSnapshot(roomQuery, (snapshot) => {
+      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
+        const data = document.data();
+        return {
+          id: document.id,
+          text: (data.text as string) ?? "",
+          status: (data.status as string) ?? "pending",
+          isAnonymous: Boolean(data.isAnonymous),
+          participantName: (data.participantName as string | undefined) || undefined,
+          createdAt: data.createdAt?.toDate?.(),
+          highlighted: Boolean(data.highlighted),
+          likeCount: typeof data.likeCount === "number" ? data.likeCount : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
+          likedBy: (data.likedBy as string[]) ?? [],
+        };
+      });
+      setQuestions(entries);
+    });
 
     return () => unsubscribe();
   }, [participantId, roomId]);
+
+  useEffect(() => {
+    const questionsRef = collection(db, "rooms", roomId, "questions");
+    const highlightedQuery = query(
+      questionsRef,
+      where("highlighted", "==", true),
+      orderBy("highlightedAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(highlightedQuery, (snapshot) => {
+      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
+        const data = document.data();
+        return {
+          id: document.id,
+          text: (data.text as string) ?? "",
+          status: (data.status as string) ?? "pending",
+          isAnonymous: Boolean(data.isAnonymous),
+          participantName: (data.participantName as string | undefined) || undefined,
+          createdAt: data.createdAt?.toDate?.(),
+          highlighted: true,
+          likeCount: typeof data.likeCount === "number" ? data.likeCount : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
+          likedBy: (data.likedBy as string[]) ?? [],
+        };
+      });
+      setHighlightedQuestions(entries);
+    });
+
+    return () => unsubscribe();
+  }, [roomId]);
 
   const canSubmit = useMemo(() => {
     if (!participantId) return false;
@@ -118,6 +152,10 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         status: "pending",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        highlighted: false,
+        highlightedAt: null,
+        likedBy: [],
+        likeCount: 0,
       });
 
       setQuestions((current) => [
@@ -128,6 +166,9 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           isAnonymous,
           participantName: isAnonymous ? undefined : participantName.trim() || undefined,
           createdAt: new Date(),
+          highlighted: false,
+          likeCount: 0,
+          likedBy: [],
         },
         ...current,
       ]);
@@ -148,10 +189,29 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     try {
       await deleteDoc(doc(db, "rooms", roomId, "questions", questionId));
       setQuestions((current) => current.filter((entry) => entry.id !== questionId));
+      setHighlightedQuestions((current) => current.filter((entry) => entry.id !== questionId));
       setFeedback("Pergunta removida.");
     } catch (removeError) {
       console.error(removeError);
       setError("Nao foi possivel remover agora.");
+    }
+  };
+
+  const handleToggleLike = async (questionToToggle: ParticipantQuestion) => {
+    if (!participantId) return;
+    setLikingQuestionId(questionToToggle.id);
+    try {
+      const questionRef = doc(db, "rooms", roomId, "questions", questionToToggle.id);
+      const alreadyLiked = questionToToggle.likedBy?.includes(participantId);
+      await updateDoc(questionRef, {
+        likedBy: alreadyLiked ? arrayRemove(participantId) : arrayUnion(participantId),
+        likeCount: increment(alreadyLiked ? -1 : 1),
+        updatedAt: serverTimestamp(),
+      });
+    } catch (likeError) {
+      console.error(likeError);
+    } finally {
+      setLikingQuestionId(null);
     }
   };
 
@@ -207,6 +267,45 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         )}
       </header>
 
+      {highlightedQuestions.length > 0 && (
+        <section className="rounded-3xl border border-violet-200 bg-violet-50/80 p-8 shadow-xl backdrop-blur">
+          <h2 className="mb-4 text-lg font-semibold text-violet-700">Perguntas em destaque</h2>
+          <ul className="grid gap-4">
+            {highlightedQuestions.map((entry) => {
+              const hasLiked = participantId ? entry.likedBy?.includes(participantId) : false;
+              return (
+                <li key={entry.id} className="rounded-2xl border border-violet-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm text-slate-900">{entry.text}</p>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs uppercase tracking-[0.2em] text-violet-600">
+                      {entry.status === "accepted"
+                        ? "Aceita"
+                        : entry.status === "rejected"
+                        ? "Recusada"
+                        : "Pendente"}
+                    </span>
+                    <button
+                      onClick={() => void handleToggleLike(entry)}
+                      disabled={likingQuestionId === entry.id}
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        hasLiked
+                          ? "border-violet-400 bg-violet-100 text-violet-700"
+                          : "border-violet-200 bg-white text-violet-600 hover:border-violet-300"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
+                    >
+                      <span>{hasLiked ? "Curtido" : "Curtir"}</span>
+                      <span className="rounded-full bg-violet-500 px-2 py-0.5 text-white">
+                        {entry.likeCount ?? 0}
+                      </span>
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       <form
         onSubmit={handleSubmit}
         className="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur"
@@ -256,7 +355,9 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           {feedback && (
             <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{feedback}</p>
           )}
-          {error && <p className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">{error}</p>}
+          {error && !(!roomName && !participantId) && (
+            <p className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">{error}</p>
+          )}
 
           <button
             type="submit"

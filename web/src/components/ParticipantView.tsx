@@ -3,6 +3,7 @@
 import Link from "next/link";
 import QRCode from "react-qr-code";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { FirebaseError } from "firebase/app";
 import {
   addDoc,
   arrayRemove,
@@ -89,7 +90,9 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
     signInAnonymously(auth).catch((anonError) => {
       console.error(anonError);
-      setRoomError("Nao foi possivel entrar na sala agora. Atualize a pagina ou tente novamente mais tarde.");
+      const code = anonError instanceof FirebaseError ? anonError.code : null;
+      const details = code ? ` (codigo: ${code})` : "";
+      setRoomError(`Nao foi possivel entrar na sala agora${details}. Atualize a pagina ou tente novamente mais tarde.`);
       setIsRoomLoading(false);
     });
   }, [authLoading, user]);
@@ -122,7 +125,9 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         if (!isMounted) return;
         setRoomName("");
         setAllowedEmails([]);
-        setRoomError("Nao foi possivel carregar esta sala agora. Tente novamente ou solicite um novo link.");
+        const code = loadError instanceof FirebaseError ? loadError.code : null;
+        const details = code ? ` (codigo: ${code})` : "";
+        setRoomError(`Nao foi possivel carregar esta sala agora${details}. Tente novamente ou solicite um novo link.`);
       } finally {
         if (!isMounted) return;
         setIsRoomLoading(false);

@@ -209,7 +209,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
       setQuestion("");
       setParticipantName("");
-      setFeedback("Pergunta enviada. Obrigado!");
+      setFeedback("Pergunta enviada. Aguarde a Moderação!");
     } catch (submissionError) {
       console.error(submissionError);
       setFeedback("Nao foi possivel enviar sua pergunta agora.");
@@ -387,7 +387,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
               rows={4}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              placeholder="Qual e a sua duvida?"
+              placeholder="Qual e a sua pergunta?"
               className="resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
             <p className="text-xs text-slate-500">O EventQ filtra palavroes automaticamente antes de enviar.</p>

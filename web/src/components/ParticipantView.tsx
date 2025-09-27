@@ -508,7 +508,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
                       ? "Aceita"
                       : entry.status === "rejected"
                       ? "Recusada"
-                      : "Pendente"}
+                      : "Pergunta Enviada"}
                   </span>
                   <button
                     onClick={() => handleDelete(entry.id)}
@@ -538,7 +538,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
                         ? "Aceita"
                         : entry.status === "rejected"
                         ? "Recusada"
-                        : "Pendente"}
+                        : "Pergunta Enviada"}
                     </span>
                     <button
                       onClick={() => void handleToggleLike(entry)}

@@ -36,6 +36,7 @@ interface ParticipantQuestion {
   participantName?: string;
   participantId?: string;
   highlighted?: boolean;
+  highlightedAt?: Date; 
   likeCount?: number;
   likedBy?: string[];
 }
@@ -48,6 +49,7 @@ type QuestionDoc = {
   participantId?: string | null;
   createdAt?: { toDate?: () => Date };
   highlighted?: boolean;
+  highlightedAt?: { toDate?: () => Date }
   likedBy?: string[];
   likeCount?: number;
 };
@@ -231,29 +233,46 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     if (isRoomLoading || roomError) return;
 
     const questionsRef = collection(db, "rooms", roomId, "questions");
-    const highlightedQuery = query(
+    const highlightedOnly = query(
       questionsRef,
-      where("highlighted", "==", true),
-      orderBy("highlightedAt", "desc")
+      where("highlighted", "==", true)
     );
 
-    const unsubscribe = onSnapshot(highlightedQuery, (snapshot) => {
-      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-        const data = document.data();
-        return {
-          id: document.id,
-          text: (data.text as string) ?? "",
-          status: (data.status as string) ?? "pending",
-          isAnonymous: Boolean(data.isAnonymous),
-          participantName: (data.participantName as string | undefined) || undefined,
-          createdAt: data.createdAt?.toDate?.(),
-          highlighted: true,
-          likeCount: typeof data.likeCount === "number" ? data.likeCount : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
-          likedBy: (data.likedBy as string[]) ?? [],
-        };
-      });
-      setHighlightedQuestions(entries);
-    });
+    const unsubscribe = onSnapshot(
+      highlightedOnly,
+      (snapshot) => {
+        const entries: ParticipantQuestion[] = snapshot.docs
+          .map((document) => {
+            const data = document.data() as QuestionDoc;
+            return {
+              id: document.id,
+              text: data.text ?? "",
+              status: (data.status as string) ?? "pending",
+              isAnonymous: !!data.isAnonymous,
+              participantName: (data.participantName as string | undefined) || undefined,
+              createdAt: data.createdAt?.toDate?.(),
+              highlighted: true,
+              highlightedAt: data.highlightedAt?.toDate?.(), // <— pega o carimbo do destaque
+              likeCount:
+                typeof data.likeCount === "number"
+                  ? data.likeCount
+                  : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
+              likedBy: (data.likedBy as string[]) ?? [],
+            };
+          })
+          // ordena no cliente por highlightedAt desc (fallback para createdAt)
+          .sort((a, b) =>
+            (b.highlightedAt?.getTime() ?? b.createdAt?.getTime() ?? 0) -
+            (a.highlightedAt?.getTime() ?? a.createdAt?.getTime() ?? 0)
+          );
+
+        setHighlightedQuestions(entries);
+      },
+      (err) => {
+        console.error("onSnapshot (destaques) falhou:", err);
+      }
+    );
+
 
     return () => unsubscribe();
   }, [roomId, isRoomLoading, roomError]);

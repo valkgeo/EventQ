@@ -349,7 +349,7 @@ export default function DashboardPage() {
     setRemovingRoomId(room.id);
     try {
       await deleteRoomWithQuestions(room.id);
-      showFeedback("Sala removida com sucesso.");
+      showFeedback("Sala removida com sucesso.", true);
     } catch (error) {
       console.error(error);
       showFeedback("Não foi possível excluir a sala agora.");
@@ -546,7 +546,7 @@ export default function DashboardPage() {
         </header>
 
         {feedback && (
-          <div className="rounded-3xl border border-slate-200 bg-white/80 p-4 text-sm text-slate-600 shadow-sm">
+          <div className="rounded-3xl border border-amber-200 bg-amber-100 p-4 text-sm text-amber-800 shadow-md">
             {feedback}
           </div>
         )}

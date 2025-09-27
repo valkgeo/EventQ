@@ -13,20 +13,22 @@ export const ProtectedRoute = ({
 }) => {
   const router = useRouter();
   const { user, loading } = useAuth();
+  const isAuthenticated = Boolean(user && !user.isAnonymous);
+
+  const normalizedEmail = user?.email?.toLowerCase() ?? null;
 
   const isAllowed = useMemo(() => {
     if (!allowedEmails || !allowedEmails.length) return true;
-    const email = user?.email?.toLowerCase();
-    return email ? allowedEmails.map((item) => item.toLowerCase()).includes(email) : false;
-  }, [allowedEmails, user?.email]);
+    return normalizedEmail ? allowedEmails.map((item) => item.toLowerCase()).includes(normalizedEmail) : false;
+  }, [allowedEmails, normalizedEmail]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !isAuthenticated) {
       router.replace("/login");
     }
-  }, [loading, router, user]);
+  }, [isAuthenticated, loading, router]);
 
-  if (loading || !user) {
+  if (loading || !isAuthenticated) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white/70">
         <span className="animate-pulse text-sm text-slate-500">Carregando...</span>
@@ -47,3 +49,4 @@ export const ProtectedRoute = ({
 
   return <>{children}</>;
 };
+

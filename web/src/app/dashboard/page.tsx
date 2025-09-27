@@ -352,7 +352,7 @@ export default function DashboardPage() {
       showFeedback("Sala removida com sucesso.", true);
     } catch (error) {
       console.error(error);
-      showFeedback("Não foi possível excluir a sala agora.");
+      showFeedback("Não foi possível excluir a sala agora.", true);
     } finally {
       setRemovingRoomId(null);
     }
@@ -491,7 +491,7 @@ export default function DashboardPage() {
       showFeedback("QR Code baixado como PNG.", true);
     } catch (error) {
       console.error(error);
-      showFeedback("Não foi possível exportar o QR Code.");
+      showFeedback("Não foi possível exportar o QR Code.", true);
     }
   };
 
@@ -509,7 +509,7 @@ export default function DashboardPage() {
       printWindow.print();
     } catch (error) {
       console.error(error);
-      showFeedback("Não foi possível imprimir o QR Code.");
+      showFeedback("Não foi possível imprimir o QR Code.", true);
     }
   };
 

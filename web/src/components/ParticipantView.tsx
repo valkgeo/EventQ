@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import QRCode from "react-qr-code";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   addDoc,
   arrayRemove,
@@ -18,9 +18,10 @@ import {
   where,
   increment,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { auth, db } from "@/lib/firebase";
 import { getRoom } from "@/lib/rooms";
 import { sanitizeQuestion } from "@/lib/profanityFilter";
+import { signInAnonymously } from "firebase/auth";
 import { useParticipantId } from "@/hooks/useParticipantId";
 import { useAuth } from "@/context/AuthContext";
 
@@ -56,7 +57,7 @@ const writeJoinedRooms = (rooms: string[]) => {
 
 export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const participantId = useParticipantId();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [roomName, setRoomName] = useState<string>("");
   const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
   const [roomError, setRoomError] = useState<string | null>(null);
@@ -69,6 +70,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const [highlightedQuestions, setHighlightedQuestions] = useState<ParticipantQuestion[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [likingQuestionId, setLikingQuestionId] = useState<string | null>(null);
+  const attemptedAnonymousSignIn = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -79,10 +81,29 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   }, [roomId]);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (user) return;
+    if (attemptedAnonymousSignIn.current) return;
+
+    attemptedAnonymousSignIn.current = true;
+
+    signInAnonymously(auth).catch((anonError) => {
+      console.error(anonError);
+      setRoomError("Nao foi possivel entrar na sala agora. Atualize a pagina ou tente novamente mais tarde.");
+      setIsRoomLoading(false);
+    });
+  }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user) return;
+
     let isMounted = true;
+
     const loadRoom = async () => {
       setIsRoomLoading(true);
       setRoomError(null);
+
       try {
         const room = await getRoom(roomId);
         if (!room) {
@@ -92,6 +113,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           setRoomError("Sala nao encontrada ou indisponivel. Verifique o link com a organizacao.");
           return;
         }
+
         if (!isMounted) return;
         setRoomName(room.title);
         setAllowedEmails(room.allowedEmails);
@@ -106,11 +128,13 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         setIsRoomLoading(false);
       }
     };
+
     void loadRoom();
+
     return () => {
       isMounted = false;
     };
-  }, [roomId]);
+  }, [roomId, authLoading, user]);
 
   useEffect(() => {
     if (!participantId || isRoomLoading || roomError) return;
@@ -506,5 +530,4 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     </div>
   );
 };
-
 

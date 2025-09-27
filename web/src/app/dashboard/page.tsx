@@ -133,7 +133,7 @@ export default function DashboardPage() {
       .then((snapshot) => {
         if (!snapshot.exists()) {
           if (user.displayName) {
-            setOrganizationName((current) => current || user.displayName "");
+            setOrganizationName((current) => current || user.displayName || "");
           }
           return;
         }

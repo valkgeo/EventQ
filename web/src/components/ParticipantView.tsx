@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import Link from "next/link";
+import QRCode from "react-qr-code";
 import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
@@ -23,6 +24,8 @@ import { sanitizeQuestion } from "@/lib/profanityFilter";
 import { useParticipantId } from "@/hooks/useParticipantId";
 import { useAuth } from "@/context/AuthContext";
 
+const JOINED_ROOMS_KEY = "eventq-joined-rooms";
+
 interface ParticipantQuestion {
   id: string;
   text: string;
@@ -34,6 +37,22 @@ interface ParticipantQuestion {
   likeCount?: number;
   likedBy?: string[];
 }
+
+const readJoinedRooms = () => {
+  if (typeof window === "undefined") return [] as string[];
+  try {
+    const stored = window.localStorage.getItem(JOINED_ROOMS_KEY);
+    return stored ? (JSON.parse(stored) as string[]) : [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
+const writeJoinedRooms = (rooms: string[]) => {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(JOINED_ROOMS_KEY, JSON.stringify(rooms));
+};
 
 export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const participantId = useParticipantId();
@@ -48,15 +67,22 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const [questions, setQuestions] = useState<ParticipantQuestion[]>([]);
   const [highlightedQuestions, setHighlightedQuestions] = useState<ParticipantQuestion[]>([]);
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [likingQuestionId, setLikingQuestionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const rooms = readJoinedRooms();
+    if (!rooms.includes(roomId)) {
+      writeJoinedRooms([roomId, ...rooms]);
+    }
+  }, [roomId]);
 
   useEffect(() => {
     const loadRoom = async () => {
       setIsRoomLoading(true);
       const room = await getRoom(roomId);
       if (!room) {
-        setError("Sala nao encontrada ou indisponivel.");
+        
       } else {
         setRoomName(room.title);
         setAllowedEmails(room.allowedEmails);
@@ -133,13 +159,21 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     return sanitized.replace(/\*/g, "").trim().length >= 3;
   }, [participantId, question]);
 
+  const shareUrl = useMemo(() => {
+    if (typeof window !== "undefined") {
+      const base = window.location.origin;
+      return `${base}/rooms/${roomId}/participate`;
+    }
+    return `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/rooms/${roomId}/participate`;
+  }, [roomId]);
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!participantId || !canSubmit) return;
 
     setSending(true);
     setFeedback(null);
-    setError(null);
+    
 
     try {
       const cleaned = sanitizeQuestion(question);
@@ -178,14 +212,14 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       setFeedback("Pergunta enviada. Obrigado!");
     } catch (submissionError) {
       console.error(submissionError);
-      setError("Nao foi possivel enviar sua pergunta agora.");
+      setFeedback("Nao foi possivel enviar sua pergunta agora.");
     } finally {
       setSending(false);
     }
   };
 
   const handleDelete = async (questionId: string) => {
-    setError(null);
+    
     try {
       await deleteDoc(doc(db, "rooms", roomId, "questions", questionId));
       setQuestions((current) => current.filter((entry) => entry.id !== questionId));
@@ -193,7 +227,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       setFeedback("Pergunta removida.");
     } catch (removeError) {
       console.error(removeError);
-      setError("Nao foi possivel remover agora.");
+      setFeedback("Nao foi possivel remover agora.");
     }
   };
 
@@ -215,11 +249,24 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     }
   };
 
+  const handleLeaveRoom = () => {
+    const confirmation = window.confirm("Deseja sair desta sala? Suas perguntas permanecerao registradas.");
+    if (!confirmation) return;
+    const rooms = readJoinedRooms().filter((id) => id !== roomId);
+    writeJoinedRooms(rooms);
+    window.location.href = "/";
+  };
+
   const canModerate = useMemo(() => {
     const email = user?.email?.toLowerCase();
     if (!email) return false;
     return allowedEmails.map((item) => item.toLowerCase()).includes(email);
   }, [allowedEmails, user?.email]);
+
+  const highlightLikeLabel = (entry: ParticipantQuestion) => {
+    const total = entry.likeCount ?? 0;
+    return total > 0 ? `${total}` : "0";
+  };
 
   if (isRoomLoading || !participantId) {
     return (
@@ -229,15 +276,8 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     );
   }
 
-  if (error && !roomName) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center text-slate-700">
-        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl">
-          <p className="text-base font-semibold text-slate-900">{error}</p>
-        </div>
-      </div>
-    );
-  }
+  const whatsappLink = `https://wa.me/?text=${encodeURIComponent(`Envie suas perguntas na sala ${roomName}: ${shareUrl}`)}`;
+  const telegramLink = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(`Envie suas perguntas na sala ${roomName}`)}`;
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-10 px-6 py-16">
@@ -247,25 +287,57 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           <h1 className="text-2xl font-semibold text-slate-900">Envie sua pergunta</h1>
           <p className="text-sm text-slate-600">{roomName}</p>
         </div>
-        {user && (
-          <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={handleLeaveRoom}
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-rose-200 hover:text-rose-500"
+          >
+            Sair da sala
+          </button>
+          <Link
+            href="/"
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+          >
+            Voltar ao inicio
+          </Link>
+          {canModerate && (
             <Link
-              href="/hall"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+              href={`/rooms/${roomId}/moderate`}
+              className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
             >
-              Voltar ao hall
+              Acessar moderacao
             </Link>
-            {canModerate && (
-              <Link
-                href={`/rooms/${roomId}/moderate`}
-                className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
-              >
-                Acessar moderacao
-              </Link>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </header>
+
+      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:grid-cols-[180px_1fr]">
+        <div className="flex flex-col items-center gap-3">
+          <QRCode value={shareUrl} size={140} bgColor="transparent" fgColor="#4338ca" />
+          <p className="text-xs text-slate-500">Compartilhe este QR Code com os participantes.</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-600">Link direto: <span className="font-medium text-violet-600">{shareUrl}</span></p>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-400"
+            >
+              Enviar via WhatsApp
+            </a>
+            <a
+              href={telegramLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-sky-400"
+            >
+              Compartilhar no Telegram
+            </a>
+          </div>
+        </div>
+      </section>
 
       {highlightedQuestions.length > 0 && (
         <section className="rounded-3xl border border-violet-200 bg-violet-50/80 p-8 shadow-xl backdrop-blur">
@@ -293,10 +365,10 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
                           : "border-violet-200 bg-white text-violet-600 hover:border-violet-300"
                       } disabled:cursor-not-allowed disabled:opacity-60`}
                     >
-                      <span>{hasLiked ? "Curtido" : "Curtir"}</span>
-                      <span className="rounded-full bg-violet-500 px-2 py-0.5 text-white">
-                        {entry.likeCount ?? 0}
+                      <span role="img" aria-label="curtir">
+                        👍
                       </span>
+                      <span>{highlightLikeLabel(entry)}</span>
                     </button>
                   </div>
                 </li>
@@ -355,9 +427,6 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           {feedback && (
             <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{feedback}</p>
           )}
-          {error && !(!roomName && !participantId) && (
-            <p className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">{error}</p>
-          )}
 
           <button
             type="submit"
@@ -407,3 +476,4 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     </div>
   );
 };
+

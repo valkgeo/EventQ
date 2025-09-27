@@ -416,72 +416,6 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         </div>
       </header>
 
-      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:grid-cols-[180px_1fr]">
-        <div className="flex flex-col items-center gap-3">
-          <QRCode value={shareUrl} size={140} bgColor="transparent" fgColor="#4338ca" />
-          <p className="text-xs text-slate-500">Compartilhe este QR Code com os participantes.</p>
-        </div>
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-slate-600">Link direto: <span className="font-medium text-violet-600">{shareUrl}</span></p>
-          <div className="flex flex-wrap gap-3">
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-400"
-            >
-              Enviar via WhatsApp
-            </a>
-            <a
-              href={telegramLink}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-sky-400"
-            >
-              Compartilhar no Telegram
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {highlightedQuestions.length > 0 && (
-        <section className="rounded-3xl border border-violet-200 bg-violet-50/80 p-8 shadow-xl backdrop-blur">
-          <h2 className="mb-4 text-lg font-semibold text-violet-700">Perguntas em destaque</h2>
-          <ul className="grid gap-4">
-            {highlightedQuestions.map((entry) => {
-              const hasLiked = participantId ? entry.likedBy?.includes(participantId) : false;
-              return (
-                <li key={entry.id} className="rounded-2xl border border-violet-200 bg-white p-5 shadow-sm">
-                  <p className="text-sm text-slate-900">{entry.text}</p>
-                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                    <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs uppercase tracking-[0.2em] text-violet-600">
-                      {entry.status === "accepted"
-                        ? "Aceita"
-                        : entry.status === "rejected"
-                        ? "Recusada"
-                        : "Pendente"}
-                    </span>
-                    <button
-                      onClick={() => void handleToggleLike(entry)}
-                      disabled={likingQuestionId === entry.id}
-                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
-                        hasLiked
-                          ? "border-violet-400 bg-violet-100 text-violet-700"
-                          : "border-violet-200 bg-white text-violet-600 hover:border-violet-300"
-                      } disabled:cursor-not-allowed disabled:opacity-60`}
-                    >
-                      <span role="img" aria-label="curtir">
-                        👍
-                      </span>
-                      <span>{highlightLikeLabel(entry)}</span>
-                    </button>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
 
       <form
         onSubmit={handleSubmit}
@@ -543,6 +477,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         </fieldset>
       </form>
 
+
       <section className="mb-12 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur">
         <header className="mb-4 flex flex-col gap-1">
           <h2 className="text-lg font-semibold text-slate-900">Minhas perguntas</h2>
@@ -578,8 +513,75 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           </ul>
         )}
       </section>
+
+      {highlightedQuestions.length > 0 && (
+        <section className="rounded-3xl border border-violet-200 bg-violet-50/80 p-8 shadow-xl backdrop-blur">
+          <h2 className="mb-4 text-lg font-semibold text-violet-700">Perguntas em destaque</h2>
+          <ul className="grid gap-4">
+            {highlightedQuestions.map((entry) => {
+              const hasLiked = participantId ? entry.likedBy?.includes(participantId) : false;
+              return (
+                <li key={entry.id} className="rounded-2xl border border-violet-200 bg-white p-5 shadow-sm">
+                  <p className="text-sm text-slate-900">{entry.text}</p>
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                    <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs uppercase tracking-[0.2em] text-violet-600">
+                      {entry.status === "accepted"
+                        ? "Aceita"
+                        : entry.status === "rejected"
+                        ? "Recusada"
+                        : "Pendente"}
+                    </span>
+                    <button
+                      onClick={() => void handleToggleLike(entry)}
+                      disabled={likingQuestionId === entry.id}
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-medium transition ${
+                        hasLiked
+                          ? "border-violet-400 bg-violet-100 text-violet-700"
+                          : "border-violet-200 bg-white text-violet-600 hover:border-violet-300"
+                      } disabled:cursor-not-allowed disabled:opacity-60`}
+                    >
+                      <span role="img" aria-label="curtir">
+                        👍
+                      </span>
+                      <span>{highlightLikeLabel(entry)}</span>
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
+
+      <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:grid-cols-[180px_1fr]">
+        <div className="flex flex-col items-center gap-3">
+          <QRCode value={shareUrl} size={140} bgColor="transparent" fgColor="#4338ca" />
+          <p className="text-xs text-slate-500">Compartilhe este QR Code com os participantes.</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-slate-600">Link direto: <span className="font-medium text-violet-600">{shareUrl}</span></p>
+          <div className="flex flex-wrap gap-3">
+            <a
+              href={whatsappLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-400"
+            >
+              Enviar via WhatsApp
+            </a>
+            <a
+              href={telegramLink}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-sky-400"
+            >
+              Compartilhar no Telegram
+            </a>
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
-
 

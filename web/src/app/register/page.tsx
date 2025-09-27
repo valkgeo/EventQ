@@ -65,6 +65,14 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
       <div className="w-full max-w-xl rounded-3xl border border-slate-200 bg-white/90 p-10 shadow-2xl backdrop-blur">
+        <div className="mb-4 text-left">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm font-medium text-violet-600 transition hover:text-violet-500"
+          >
+            ← Voltar para o site
+          </Link>
+        </div>
         <div className="mb-8 flex flex-col gap-2 text-center">
           <h1 className="text-2xl font-semibold text-slate-900">Crie seu espaco EventQ</h1>
           <p className="text-sm text-slate-600">

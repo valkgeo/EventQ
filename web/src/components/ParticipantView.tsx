@@ -59,6 +59,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const { user } = useAuth();
   const [roomName, setRoomName] = useState<string>("");
   const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
+  const [roomError, setRoomError] = useState<string | null>(null);
   const [isRoomLoading, setIsRoomLoading] = useState(true);
   const [question, setQuestion] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -78,23 +79,41 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   }, [roomId]);
 
   useEffect(() => {
+    let isMounted = true;
     const loadRoom = async () => {
       setIsRoomLoading(true);
-      const room = await getRoom(roomId);
-      if (!room) {
-        
-      } else {
+      setRoomError(null);
+      try {
+        const room = await getRoom(roomId);
+        if (!room) {
+          if (!isMounted) return;
+          setRoomName("");
+          setAllowedEmails([]);
+          setRoomError("Sala nao encontrada ou indisponivel. Verifique o link com a organizacao.");
+          return;
+        }
+        if (!isMounted) return;
         setRoomName(room.title);
         setAllowedEmails(room.allowedEmails);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!isMounted) return;
+        setRoomName("");
+        setAllowedEmails([]);
+        setRoomError("Nao foi possivel carregar esta sala agora. Tente novamente ou solicite um novo link.");
+      } finally {
+        if (!isMounted) return;
+        setIsRoomLoading(false);
       }
-      setIsRoomLoading(false);
     };
-
     void loadRoom();
+    return () => {
+      isMounted = false;
+    };
   }, [roomId]);
 
   useEffect(() => {
-    if (!participantId) return;
+    if (!participantId || isRoomLoading || roomError) return;
 
     const questionsRef = collection(db, "rooms", roomId, "questions");
     const roomQuery = query(
@@ -122,9 +141,11 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     });
 
     return () => unsubscribe();
-  }, [participantId, roomId]);
+  }, [participantId, roomId, isRoomLoading, roomError]);
 
   useEffect(() => {
+    if (isRoomLoading || roomError) return;
+
     const questionsRef = collection(db, "rooms", roomId, "questions");
     const highlightedQuery = query(
       questionsRef,
@@ -151,7 +172,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     });
 
     return () => unsubscribe();
-  }, [roomId]);
+  }, [roomId, isRoomLoading, roomError]);
 
   const canSubmit = useMemo(() => {
     if (!participantId) return false;
@@ -232,7 +253,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   };
 
   const handleToggleLike = async (questionToToggle: ParticipantQuestion) => {
-    if (!participantId) return;
+    if (!participantId || isRoomLoading || roomError) return;
     setLikingQuestionId(questionToToggle.id);
     try {
       const questionRef = doc(db, "rooms", roomId, "questions", questionToToggle.id);
@@ -272,6 +293,21 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white/70 text-slate-500">
         <p className="animate-pulse text-sm">Carregando sala...</p>
+      </div>
+    );
+  }
+
+  if (roomError) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white/80 px-6 text-center text-slate-700">
+        <p className="text-lg font-semibold text-slate-900">Nao foi possivel carregar a sala</p>
+        <p className="max-w-md text-sm text-slate-600">{roomError}</p>
+        <Link
+          href="/"
+          className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+        >
+          Voltar para o inicio
+        </Link>
       </div>
     );
   }
@@ -470,4 +506,5 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     </div>
   );
 };
+
 

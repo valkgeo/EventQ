@@ -72,7 +72,31 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const [feedback, setFeedback] = useState<string | null>(null);
   const [likingQuestionId, setLikingQuestionId] = useState<string | null>(null);
   const attemptedAnonymousSignIn = useRef(false);
+  const feedbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const clearFeedbackTimer = () => {
+    if (feedbackTimeoutRef.current) {
+      clearTimeout(feedbackTimeoutRef.current);
+      feedbackTimeoutRef.current = null;
+    }
+  };
+
+  const showFeedbackMessage = (message: string | null, autoDismissMs?: number) => {
+    clearFeedbackTimer();
+    setFeedback(message);
+    if (autoDismissMs) {
+      feedbackTimeoutRef.current = setTimeout(() => {
+        setFeedback(null);
+        feedbackTimeoutRef.current = null;
+      }, autoDismissMs);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      clearFeedbackTimer();
+    };
+  }, []);
   useEffect(() => {
     if (typeof window === "undefined") return;
     const rooms = readJoinedRooms();
@@ -222,7 +246,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     if (!participantId || !canSubmit) return;
 
     setSending(true);
-    setFeedback(null);
+    showFeedbackMessage(null);
     
 
     try {
@@ -259,10 +283,10 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
       setQuestion("");
       setParticipantName("");
-      setFeedback("Pergunta enviada. Aguarde a Moderação!");
+      showFeedbackMessage("Pergunta enviada. Aguarde a Moderacao!", 2000);
     } catch (submissionError) {
       console.error(submissionError);
-      setFeedback("Nao foi possivel enviar sua pergunta agora.");
+      showFeedbackMessage("Nao foi possivel enviar sua pergunta agora.");
     } finally {
       setSending(false);
     }
@@ -274,10 +298,10 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       await deleteDoc(doc(db, "rooms", roomId, "questions", questionId));
       setQuestions((current) => current.filter((entry) => entry.id !== questionId));
       setHighlightedQuestions((current) => current.filter((entry) => entry.id !== questionId));
-      setFeedback("Pergunta removida.");
+      showFeedbackMessage("Pergunta removida.", 2000);
     } catch (removeError) {
       console.error(removeError);
-      setFeedback("Nao foi possivel remover agora.");
+      showFeedbackMessage("Nao foi possivel remover agora.");
     }
   };
 
@@ -316,6 +340,28 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const highlightLikeLabel = (entry: ParticipantQuestion) => {
     const total = entry.likeCount ?? 0;
     return total > 0 ? `${total}` : "0";
+  };
+
+  const personalQuestionClasses = (status: string) => {
+    switch (status) {
+      case "accepted":
+        return "border-emerald-200 bg-emerald-50";
+      case "rejected":
+        return "border-rose-200 bg-rose-50";
+      default:
+        return "border-amber-200 bg-amber-50";
+    }
+  };
+
+  const personalBadgeClasses = (status: string) => {
+    switch (status) {
+      case "accepted":
+        return "border-emerald-300 bg-emerald-100 text-emerald-700";
+      case "rejected":
+        return "border-rose-300 bg-rose-100 text-rose-700";
+      default:
+        return "border-amber-300 bg-amber-100 text-amber-700";
+    }
   };
 
   if (isRoomLoading || !participantId) {
@@ -510,10 +556,10 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         ) : (
           <ul className="grid gap-4">
             {questions.map((entry) => (
-              <li key={entry.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <li key={entry.id} className={`rounded-2xl border p-5 shadow-sm ${personalQuestionClasses(entry.status)}`}>
                 <p className="text-sm text-slate-900">{entry.text}</p>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <span className="rounded-full border border-slate-200 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-500">
+                  <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${personalBadgeClasses(entry.status)}`}>
                     {entry.status === "accepted"
                       ? "Aceita"
                       : entry.status === "rejected"
@@ -535,4 +581,5 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     </div>
   );
 };
+
 

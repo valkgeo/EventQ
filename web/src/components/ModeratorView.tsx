@@ -148,7 +148,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
 
   if (loadingRoom) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
+      <div className="flex min-h-screen items-center justify-center bg-white/70 text-slate-500">
         <p className="animate-pulse text-sm">Carregando sala...</p>
       </div>
     );
@@ -156,44 +156,44 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
 
   if (!room) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-slate-200">
-        <div className="max-w-sm rounded-3xl border border-slate-800/80 bg-slate-900/60 p-8">
-          <p className="text-base font-semibold">{error ?? "Sala nao encontrada."}</p>
+      <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center text-slate-700">
+        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl">
+          <p className="text-base font-semibold text-slate-900">{error ?? "Sala nao encontrada."}</p>
         </div>
       </div>
     );
   }
 
   return (
-    <ProtectedRoute>
+    <ProtectedRoute allowedEmails={room.allowedEmails}>
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-10 px-6 py-16">
-        <header className="flex flex-col justify-between gap-6 sm:flex-row sm:items-center">
+        <header className="flex flex-col justify-between gap-6 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:flex-row sm:items-center">
           <div className="flex flex-col gap-2">
-            <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Moderando</p>
-            <h1 className="text-2xl font-semibold text-slate-100">{room.title}</h1>
-            <p className="text-sm text-slate-400">
-              Organizacao {room.organizationName} - {counts.pending} perguntas pendentes
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Moderando</p>
+            <h1 className="text-2xl font-semibold text-slate-900">{room.title}</h1>
+            <p className="text-sm text-slate-600">
+              Organizacao {room.organizationName} – {counts.pending} perguntas pendentes
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => void handleBulkStatus("accepted")}
               disabled={processing || counts.pending === 0}
-              className="inline-flex items-center justify-center rounded-full bg-emerald-400/90 px-4 py-2 text-xs font-medium text-emerald-900 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Aprovar todas
             </button>
             <button
               onClick={() => void handleBulkStatus("rejected")}
               disabled={processing || counts.pending === 0}
-              className="inline-flex items-center justify-center rounded-full bg-rose-400/90 px-4 py-2 text-xs font-medium text-rose-950 transition hover:bg-rose-300 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Rejeitar todas
             </button>
             <button
               onClick={handleClear}
               disabled={processing || counts.all === 0}
-              className="inline-flex items-center justify-center rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Limpar historico
             </button>
@@ -208,8 +208,8 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
               onClick={() => setFilter(option)}
               className={`rounded-full border px-4 py-2 text-xs font-medium transition ${
                 filter === option
-                  ? "border-slate-100 bg-slate-100/10 text-slate-100"
-                  : "border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+                  ? "border-violet-200 bg-violet-50 text-violet-600"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-200 hover:text-violet-600"
               }`}
             >
               {filterLabels[option]} ({counts[option] ?? 0})
@@ -218,35 +218,35 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
         </section>
 
         {error && (
-          <div className="rounded-3xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-200">{error}</div>
+          <div className="rounded-3xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">{error}</div>
         )}
 
         <section className="grid gap-4 pb-16">
           {filteredQuestions.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-700/60 bg-slate-900/30 p-8 text-sm text-slate-400">
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-sm text-slate-500">
               Nenhuma pergunta nesta categoria por enquanto.
             </div>
           ) : (
             filteredQuestions.map((question) => (
               <article
                 key={question.id}
-                className="flex flex-col gap-4 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-6 shadow-lg backdrop-blur"
+                className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-lg backdrop-blur"
               >
                 <div className="flex flex-col gap-2">
-                  <p className="text-sm text-slate-100">{question.text}</p>
+                  <p className="text-sm text-slate-900">{question.text}</p>
                   <p className="text-xs text-slate-500">
                     {question.isAnonymous ? "Anonimo" : question.participantName || "Participante"}
-                    {question.createdAt && ` - ${question.createdAt.toLocaleTimeString()}`}
+                    {question.createdAt && ` – ${question.createdAt.toLocaleTimeString()}`}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <span
                     className={`inline-flex items-center rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${
                       question.status === "accepted"
-                        ? "border-emerald-400/60 text-emerald-300"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-600"
                         : question.status === "rejected"
-                        ? "border-rose-400/60 text-rose-300"
-                        : "border-slate-600 text-slate-400"
+                        ? "border-rose-200 bg-rose-50 text-rose-600"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
                     }`}
                   >
                     {question.status === "accepted"
@@ -258,14 +258,14 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                   <button
                     onClick={() => void handleUpdateStatus(question.id, "accepted")}
                     disabled={processing || question.status === "accepted"}
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-400/90 px-4 py-2 text-xs font-medium text-emerald-900 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Aprovar
                   </button>
                   <button
                     onClick={() => void handleUpdateStatus(question.id, "rejected")}
                     disabled={processing || question.status === "rejected"}
-                    className="inline-flex items-center justify-center rounded-full bg-rose-400/90 px-4 py-2 text-xs font-medium text-rose-950 transition hover:bg-rose-300 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Rejeitar
                   </button>
@@ -273,7 +273,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                     <button
                       onClick={() => void handleUpdateStatus(question.id, "pending")}
                       disabled={processing}
-                      className="inline-flex items-center justify-center rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Voltar para pendente
                     </button>

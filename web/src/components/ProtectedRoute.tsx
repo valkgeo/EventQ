@@ -28,19 +28,18 @@ export const ProtectedRoute = ({
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950/95">
-        <span className="animate-pulse text-sm text-slate-200">Carregando...</span>
+      <div className="flex min-h-screen items-center justify-center bg-white/70">
+        <span className="animate-pulse text-sm text-slate-500">Carregando...</span>
       </div>
     );
   }
 
   if (!isAllowed) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-950/95 text-center text-slate-200">
-        <p className="text-lg font-semibold">Acesso nao autorizado</p>
-        <p className="max-w-md text-sm text-slate-400">
-          Seu e-mail nao esta associado a moderacao desta sala. Confirme com a organizacao ou faca login
-          com outro endereco.
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-white/80 px-6 text-center text-slate-700">
+        <p className="text-lg font-semibold text-slate-900">Acesso nao autorizado</p>
+        <p className="max-w-md text-sm text-slate-600">
+          Seu e-mail nao esta associado a moderacao desta sala. Confirme com a organizacao ou faca login com outro endereco.
         </p>
       </div>
     );

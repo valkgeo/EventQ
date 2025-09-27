@@ -131,7 +131,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
   if (isRoomLoading || !participantId) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-slate-200">
+      <div className="flex min-h-screen items-center justify-center bg-white/70 text-slate-500">
         <p className="animate-pulse text-sm">Carregando sala...</p>
       </div>
     );
@@ -139,9 +139,9 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
   if (error && !roomName) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-slate-200">
-        <div className="max-w-sm rounded-3xl border border-slate-800/80 bg-slate-900/60 p-8">
-          <p className="text-base font-semibold">{error}</p>
+      <div className="flex min-h-screen items-center justify-center bg-white px-6 text-center text-slate-700">
+        <div className="max-w-sm rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl">
+          <p className="text-base font-semibold text-slate-900">{error}</p>
         </div>
       </div>
     );
@@ -149,18 +149,19 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-10 px-6 py-16">
-      <header className="flex flex-col gap-3 text-center">
-        <h1 className="text-2xl font-semibold text-slate-100">Envie sua pergunta</h1>
-        <p className="text-sm text-slate-400">Sala {roomName}</p>
+      <header className="flex flex-col gap-2 text-center">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Sala</p>
+        <h1 className="text-2xl font-semibold text-slate-900">Envie sua pergunta</h1>
+        <p className="text-sm text-slate-600">{roomName}</p>
       </header>
 
       <form
         onSubmit={handleSubmit}
-        className="rounded-3xl border border-slate-800/80 bg-slate-900/40 p-8 shadow-xl backdrop-blur"
+        className="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur"
       >
         <fieldset className="flex flex-col gap-4" disabled={sending}>
           <div className="flex flex-col gap-2">
-            <label htmlFor="question" className="text-xs uppercase tracking-[0.3em] text-slate-500">
+            <label htmlFor="question" className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
               Pergunta
             </label>
             <textarea
@@ -170,24 +171,24 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
               placeholder="Qual e a sua duvida?"
-              className="resize-none rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+              className="resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
             <p className="text-xs text-slate-500">O EventQ filtra palavroes automaticamente antes de enviar.</p>
           </div>
 
-          <label className="inline-flex cursor-pointer items-center gap-3 text-sm text-slate-300">
+          <label className="inline-flex cursor-pointer items-center gap-3 text-sm text-slate-600">
             <input
               type="checkbox"
               checked={isAnonymous}
               onChange={(event) => setIsAnonymous(event.target.checked)}
-              className="h-4 w-4 rounded border border-slate-600 bg-slate-950 text-slate-100 focus:ring-slate-400"
+              className="h-4 w-4 rounded border border-slate-300 text-violet-600 focus:ring-violet-400"
             />
             Enviar como anonimo
           </label>
 
           {!isAnonymous && (
             <div className="flex flex-col gap-2">
-              <label htmlFor="name" className="text-xs uppercase tracking-[0.3em] text-slate-500">
+              <label htmlFor="name" className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
                 Nome
               </label>
               <input
@@ -195,41 +196,43 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
                 value={participantName}
                 onChange={(event) => setParticipantName(event.target.value)}
                 placeholder="Como voce gostaria de ser identificado"
-                className="rounded-2xl border border-slate-800 bg-slate-950/40 px-4 py-3 text-sm text-slate-100 outline-none transition focus:border-slate-500"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
               />
             </div>
           )}
 
-          {feedback && <p className="rounded-2xl border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-200">{feedback}</p>}
-          {error && <p className="rounded-2xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-300">{error}</p>}
+          {feedback && (
+            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{feedback}</p>
+          )}
+          {error && <p className="rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-600">{error}</p>}
 
           <button
             type="submit"
             disabled={!canSubmit || sending}
-            className="inline-flex items-center justify-center rounded-full bg-slate-100 px-6 py-3 text-sm font-medium text-slate-900 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center justify-center rounded-full bg-violet-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sending ? "Enviando..." : "Enviar pergunta"}
           </button>
         </fieldset>
       </form>
 
-      <section className="mb-12 rounded-3xl border border-slate-800/80 bg-slate-900/40 p-8 shadow-xl backdrop-blur">
+      <section className="mb-12 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur">
         <header className="mb-4 flex flex-col gap-1">
-          <h2 className="text-lg font-semibold text-slate-100">Minhas perguntas</h2>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500">visivel apenas para voce</p>
+          <h2 className="text-lg font-semibold text-slate-900">Minhas perguntas</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">Visivel apenas para voce</p>
         </header>
 
         {questions.length === 0 ? (
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-600">
             Nenhuma pergunta enviada ainda. Compartilhe sua primeira duvida com o moderador!
           </p>
         ) : (
           <ul className="grid gap-4">
             {questions.map((entry) => (
-              <li key={entry.id} className="rounded-2xl border border-slate-800 bg-slate-950/40 p-5">
-                <p className="text-sm text-slate-200">{entry.text}</p>
+              <li key={entry.id} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <p className="text-sm text-slate-900">{entry.text}</p>
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                  <span className="rounded-full border border-slate-700 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-400">
+                  <span className="rounded-full border border-slate-200 px-3 py-1 text-xs uppercase tracking-[0.2em] text-slate-500">
                     {entry.status === "accepted"
                       ? "Aceita"
                       : entry.status === "rejected"
@@ -238,7 +241,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
                   </span>
                   <button
                     onClick={() => handleDelete(entry.id)}
-                    className="text-xs text-slate-400 underline underline-offset-4 transition hover:text-slate-200"
+                    className="text-xs font-medium text-violet-600 underline underline-offset-4 transition hover:text-violet-500"
                   >
                     Excluir
                   </button>

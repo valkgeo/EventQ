@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ export const SignOutButton = () => {
     <button
       onClick={handleSignOut}
       disabled={loading}
-      className="inline-flex items-center justify-center rounded-full border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 transition hover:border-slate-400 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 shadow-sm transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
     >
       {loading ? "Saindo..." : "Sair"}
     </button>

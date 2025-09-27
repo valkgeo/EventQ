@@ -35,6 +35,7 @@ interface ParticipantQuestion {
   createdAt?: Date;
   isAnonymous: boolean;
   participantName?: string;
+  participantId?: string;
   highlighted?: boolean;
   likeCount?: number;
   likedBy?: string[];
@@ -175,23 +176,28 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(roomQuery, (snapshot) => {
-      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-        const data = document.data();
-        return {
-          id: document.id,
-          text: (data.text as string) ?? "",
-          status: (data.status as string) ?? "pending",
-          isAnonymous: Boolean(data.isAnonymous),
-          participantName: (data.participantName as string | undefined) || undefined,
-          createdAt: data.createdAt?.toDate?.(),
-          highlighted: Boolean(data.highlighted),
-          likeCount: typeof data.likeCount === "number" ? data.likeCount : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
-          likedBy: (data.likedBy as string[]) ?? [],
-        };
-      });
-      setQuestions(entries);
-    });
+    const unsubscribe = onSnapshot(
+      roomQuery,
+      { includeMetadataChanges: true },
+      (snapshot) => {
+        const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
+          const data = document.data();
+          return {
+            id: document.id,
+            text: (data.text as string) ?? "",
+            status: (data.status as string) ?? "pending",
+            isAnonymous: Boolean(data.isAnonymous),
+            participantName: (data.participantName as string | undefined) || undefined,
+            participantId: (data.participantId as string | undefined) || undefined,
+            createdAt: data.createdAt?.toDate?.(),
+            highlighted: Boolean(data.highlighted),
+            likeCount: typeof data.likeCount === "number" ? data.likeCount : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
+            likedBy: (data.likedBy as string[]) ?? [],
+          };
+        });
+        setQuestions(entries);
+      }
+    );
 
     return () => unsubscribe();
   }, [participantId, roomId, isRoomLoading, roomError]);
@@ -229,9 +235,11 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
   const canSubmit = useMemo(() => {
     if (!participantId) return false;
-    const sanitized = sanitizeQuestion(question);
-    return sanitized.replace(/\*/g, "").trim().length >= 3;
-  }, [participantId, question]);
+    const sanitized = sanitizeQuestion(question).replace(/\*/g, "").trim();
+    const hasEnoughChars = sanitized.length >= 5;
+    const hasIdentity = isAnonymous || participantName.trim().length > 0;
+    return hasEnoughChars && hasIdentity;
+  }, [participantId, question, isAnonymous, participantName]);
 
   const shareUrl = useMemo(() => {
     if (typeof window !== "undefined") {
@@ -273,6 +281,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
           status: "pending",
           isAnonymous,
           participantName: isAnonymous ? undefined : participantName.trim() || undefined,
+          participantId,
           createdAt: new Date(),
           highlighted: false,
           likeCount: 0,

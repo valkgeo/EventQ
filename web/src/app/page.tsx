@@ -62,10 +62,18 @@ export default function Home() {
                 <span className="text-purple-600">Q</span>
               </div>
             </div>
+            <div className="md:col-span-7 lg:max-w-3xl max-w-none space-y-8">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold leading-tight tracking-tight text-slate-900">
+                {/* Mobile: quebra natural */}
+                <span className="md:hidden">
+                  Perguntas inteligentes para eventos memoráveis.
+                </span>
 
-            <div className="space-y-5">
-              <h1 className="text-4xl font-semibold leading-tight tracking-tight text-slate-900 md:text-5xl lg:text-6xl">
-                <span className="whitespace-nowrap">Perguntas{"\u00A0"}inteligentes para</span> eventos memoráveis.
+                {/* Desktop/Tablet: duas linhas fixas */}
+                <span className="hidden md:inline">
+                  <span className="whitespace-nowrap">Perguntas&nbsp;inteligentes&nbsp;para</span><br />
+                  <span className="whitespace-nowrap">eventos&nbsp;memoráveis.</span>
+                </span>
               </h1>
               <p className="text-base text-slate-600 md:text-lg">
                 Crie salas em segundos, distribua um QR Code elegante e mantenha a conversa fluindo com moderação refinada.

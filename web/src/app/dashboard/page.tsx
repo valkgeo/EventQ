@@ -73,8 +73,40 @@ export default function DashboardPage() {
   const [shareOpenId, setShareOpenId] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
+  const feedbackTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const email = user?.email?.toLowerCase() ?? null;
   const origin = typeof window !== "undefined" ? window.location.origin : "";
+
+  const clearFeedback = () => {
+    if (feedbackTimeout.current) {
+      clearTimeout(feedbackTimeout.current);
+      feedbackTimeout.current = null;
+    }
+    setFeedback(null);
+  };
+
+  const showFeedback = (message: string, autoDismiss = false) => {
+    if (feedbackTimeout.current) {
+      clearTimeout(feedbackTimeout.current);
+      feedbackTimeout.current = null;
+    }
+    setFeedback(message);
+    if (autoDismiss) {
+      feedbackTimeout.current = setTimeout(() => {
+        setFeedback(null);
+        feedbackTimeout.current = null;
+      }, 2500);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (feedbackTimeout.current) {
+        clearTimeout(feedbackTimeout.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -223,18 +255,12 @@ export default function DashboardPage() {
 
   const hasRooms = displayRooms.length > 0;
 
-  useEffect(() => {
-    if (hasRooms) {
-      setShowCreateForm(true);
-    }
-  }, [hasRooms]);
 
   const handleCopy = async (roomId: string) => {
     if (typeof window === "undefined") return;
     const url = `${window.location.origin}/rooms/${roomId}/participate`;
     await navigator.clipboard.writeText(url);
-    setFeedback("Link copiado para a área de transferência.");
-    setTimeout(() => setFeedback(null), 2500);
+    showFeedback("Link copiado para a área de transferência.", true);
   };
 
   const handleDeleteRoom = async (room: Room) => {
@@ -246,10 +272,10 @@ export default function DashboardPage() {
     setRemovingRoomId(room.id);
     try {
       await deleteRoomWithQuestions(room.id);
-      setFeedback("Sala removida com sucesso.");
+      showFeedback("Sala removida com sucesso.");
     } catch (error) {
       console.error(error);
-      setFeedback("Não foi possível excluir a sala agora.");
+      showFeedback("Não foi possível excluir a sala agora.");
     } finally {
       setRemovingRoomId(null);
     }
@@ -266,7 +292,7 @@ export default function DashboardPage() {
     if (!user?.email) return;
 
     setCreatingRoom(true);
-    setFeedback(null);
+    clearFeedback();
 
     try {
       const roomId = await createRoom({
@@ -280,11 +306,11 @@ export default function DashboardPage() {
 
       writeJoinedRooms([roomId, ...readJoinedRooms()]);
       setForm(initialForm);
-      setFeedback("Sala criada com sucesso!");
+      showFeedback("Sala criada com sucesso!");
       router.push(`/rooms/${roomId}/moderate`);
     } catch (error) {
       console.error(error);
-      setFeedback("Não foi possível criar a sala agora.");
+      showFeedback("Não foi possível criar a sala agora.");
     } finally {
       setCreatingRoom(false);
     }
@@ -338,11 +364,6 @@ export default function DashboardPage() {
     );
   };
 
-  useEffect(() => {
-    if (displayRooms.length > 0) {
-      setShowCreateForm(true);
-    }
-  }, [displayRooms.length]);
 
   if (loading || !user) {
     return (

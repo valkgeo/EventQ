@@ -3,14 +3,40 @@
 import QRCode from "react-qr-code";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { onSnapshot, orderBy, query } from "firebase/firestore";
+import { collection, doc, getDoc, onSnapshot, orderBy, query } from "firebase/firestore";
 import { useRouter } from "next/navigation";
-import { deleteRoomWithQuestions, getRoom, roomsByEmailQuery, type Room, roomsCollection } from "@/lib/rooms";
+import {
+  createRoom,
+  deleteRoomWithQuestions,
+  getRoom,
+  roomsByEmailQuery,
+  type Room,
+  roomsCollection,
+} from "@/lib/rooms";
 import { useAuth } from "@/context/AuthContext";
 import { SignOutButton } from "@/components/SignOutButton";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { db } from "@/lib/firebase";
 
 const JOINED_ROOMS_KEY = "eventq-joined-rooms";
+
+type RoomStats = {
+  total: number;
+  accepted: number;
+  pending: number;
+};
+
+type CreateFormState = {
+  title: string;
+  moderatorName: string;
+  moderatorEmail: string;
+};
+
+const initialForm: CreateFormState = {
+  title: "",
+  moderatorName: "",
+  moderatorEmail: "",
+};
 
 const readJoinedRooms = () => {
   if (typeof window === "undefined") return [] as string[];
@@ -36,10 +62,36 @@ const shareLinks = (roomUrl: string, roomTitle: string) => ({
 export default function DashboardPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [managedRooms, setManagedRooms] = useState<Room[]>([]);
   const [participantRooms, setParticipantRooms] = useState<Room[]>([]);
+  const [roomStats, setRoomStats] = useState<Record<string, RoomStats>>({});
   const [feedback, setFeedback] = useState<string | null>(null);
   const [removingRoomId, setRemovingRoomId] = useState<string | null>(null);
+  const [form, setForm] = useState<CreateFormState>(initialForm);
+  const [organizationName, setOrganizationName] = useState<string>("");
+  const [creatingRoom, setCreatingRoom] = useState(false);
+  const [shareOpenId, setShareOpenId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    const profileRef = doc(db, "users", user.uid);
+    getDoc(profileRef)
+      .then((snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data() as { organizationName?: string; displayName?: string };
+          if (data.organizationName) {
+            setOrganizationName(data.organizationName);
+          } else if (user.displayName) {
+            setOrganizationName(user.displayName);
+          }
+          if (user.displayName) {
+            setForm((prev) => (prev.moderatorName ? prev : { ...prev, moderatorName: user.displayName ?? "" }));
+          }
+          }
+        }
+      })
+      .catch((err) => console.error(err));
+  }, [user]);
 
   useEffect(() => {
     if (loading) return;
@@ -65,34 +117,30 @@ export default function DashboardPage() {
           status: data.status as string | undefined,
         };
       });
-      setRooms(entries);
+      setManagedRooms(entries);
     });
 
     return () => unsubscribe();
   }, [loading, router, user?.email]);
 
   useEffect(() => {
-    const loadParticipantRooms = async () => {
-      const joined = readJoinedRooms();
-      if (joined.length === 0) {
-        setParticipantRooms([]);
-        return;
-      }
+    const joined = readJoinedRooms();
+    if (joined.length === 0) {
+      setParticipantRooms([]);
+      return;
+    }
 
-      try {
-        const fetched = await Promise.all(
-          joined.map(async (roomId) => {
-            const room = await getRoom(roomId);
-            return room ? room : null;
-          })
-        );
-        setParticipantRooms(fetched.filter(Boolean) as Room[]);
-      } catch (error) {
-        console.error(error);
-      }
+    const load = async () => {
+      const fetched = await Promise.all(
+        joined.map(async (roomId) => {
+          const room = await getRoom(roomId);
+          return room ? room : null;
+        })
+      );
+      setParticipantRooms(fetched.filter(Boolean) as Room[]);
     };
 
-    void loadParticipantRooms();
+    void load();
   }, []);
 
   useEffect(() => {
@@ -114,6 +162,34 @@ export default function DashboardPage() {
 
     return () => unsubscribe();
   }, []);
+
+  useEffect(() => {
+    const unsubscribeFns: (() => void)[] = [];
+
+    managedRooms.forEach((room) => {
+      const questionsRef = collection(db, "rooms", room.id, "questions");
+      const unsubscribe = onSnapshot(questionsRef, (snapshot) => {
+        let total = 0;
+        let accepted = 0;
+        let pending = 0;
+        snapshot.forEach((doc) => {
+          total += 1;
+          const status = doc.data().status as string | undefined;
+          if (status === "accepted") accepted += 1;
+          else if (status === "pending" || !status) pending += 1;
+        });
+        setRoomStats((prev) => ({
+          ...prev,
+          [room.id]: { total, accepted, pending },
+        }));
+      });
+      unsubscribeFns.push(unsubscribe);
+    });
+
+    return () => {
+      unsubscribeFns.forEach((fn) => fn());
+    };
+  }, [managedRooms]);
 
   const handleCopy = async (roomId: string) => {
     if (typeof window === "undefined") return;
@@ -147,9 +223,40 @@ export default function DashboardPage() {
     setParticipantRooms((current) => current.filter((room) => room.id !== roomId));
   };
 
-  const email = user?.email?.toLowerCase() ?? null;
+  const handleCreateRoom = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user?.email) return;
 
+    setCreatingRoom(true);
+    setFeedback(null);
+
+    try {
+      const roomId = await createRoom({
+        title: form.title,
+        organizationName: organizationName || user.displayName || "Minha organizacao",
+        organizationEmail: user.email,
+        moderatorName: form.moderatorName || undefined,
+        moderatorEmail: form.moderatorEmail || undefined,
+        createdBy: user.uid,
+      });
+
+      writeJoinedRooms([roomId, ...readJoinedRooms()]);
+      setForm(initialForm);
+      setFeedback("Sala criada com sucesso!");
+      router.push(`/rooms/${roomId}/moderate`);
+    } catch (error) {
+      console.error(error);
+      setFeedback("Nao foi possivel criar a sala agora.");
+    } finally {
+      setCreatingRoom(false);
+    }
+  };
+
+  const email = user?.email?.toLowerCase() ?? null;
   const isOwner = (room: Room) => email && room.organizationEmail.toLowerCase() === email;
+  const canModerateRoom = (room: Room) => room.allowedEmails.some((allowed) => allowed.toLowerCase() === email);
+
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
 
   if (loading || !user) {
     return (
@@ -159,6 +266,54 @@ export default function DashboardPage() {
     );
   }
 
+  const renderShareButton = (roomId: string, title: string) => {
+    const url = `${origin}/rooms/${roomId}/participate`;
+    const { whatsapp, telegram } = shareLinks(url, title);
+    const isOpen = shareOpenId === roomId;
+
+    return (
+      <div className="relative">
+        <button
+          onClick={() => setShareOpenId((current) => (current === roomId ? null : roomId))}
+          className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+        >
+          Compartilhar
+        </button>
+        {isOpen && (
+          <div className="absolute right-0 z-10 mt-2 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <button
+              onClick={() => {
+                void handleCopy(roomId);
+                setShareOpenId(null);
+              }}
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50"
+            >
+              Copiar link
+            </button>
+            <a
+              href={whatsapp}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-emerald-600 transition hover:bg-slate-50"
+              onClick={() => setShareOpenId(null)}
+            >
+              WhatsApp
+            </a>
+            <a
+              href={telegram}
+              target="_blank"
+              rel="noreferrer"
+              className="flex w-full items-center gap-2 px-4 py-2 text-sm text-sky-600 transition hover:bg-slate-50"
+              onClick={() => setShareOpenId(null)}
+            >
+              Telegram
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <ProtectedRoute>
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
@@ -167,7 +322,7 @@ export default function DashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Salas do EventQ</p>
             <h1 className="text-3xl font-semibold text-slate-900">Painel e Hall</h1>
             <p className="text-sm text-slate-600">
-              Gerencie suas salas, compartilhe acessos e acompanhe as salas que voce participa.
+              Crie novas salas, compartilhe com participantes e acompanhe as salas que voce organiza ou participa.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -181,150 +336,205 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <section className="grid gap-6 pb-16 sm:grid-cols-2">
-          {participantRooms.length > 0 && (
+        <section className="rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur">
+          <h2 className="text-lg font-semibold text-slate-900">Crie uma sala</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Informe os dados principais para gerar um novo QR Code. voce pode convidar um moderador opcional.
+          </p>
+          <form onSubmit={handleCreateRoom} className="mt-6 grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Nome da sala</label>
+              <input
+                required
+                value={form.title}
+                onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
+                placeholder="Ex.: Sala principal do evento"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Moderador principal</label>
+              <input
+                value={form.moderatorName}
+                onChange={(event) => setForm((prev) => ({ ...prev, moderatorName: event.target.value }))}
+                placeholder="Nome completo"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">E-mail do moderador</label>
+              <input
+                type="email"
+                value={form.moderatorEmail}
+                onChange={(event) => setForm((prev) => ({ ...prev, moderatorEmail: event.target.value }))}
+                placeholder="moderador@evento.com"
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+              />
+              <p className="text-xs text-slate-500">Opcional. Adicione para conceder acesso direto a moderacao.</p>
+            </div>
+            <div className="sm:col-span-2 flex justify-end">
+              <button
+                type="submit"
+                disabled={creatingRoom}
+                className="inline-flex items-center justify-center rounded-full bg-violet-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {creatingRoom ? "Criando..." : "Criar sala"}
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {participantRooms.length > 0 && (
+          <section className="grid gap-6 pb-16 sm:grid-cols-2">
             <div className="sm:col-span-2">
               <h2 className="mb-4 text-xl font-semibold text-slate-900">Salas que acompanho</h2>
             </div>
-          )}
-          {participantRooms.length === 0 ? null : participantRooms.map((room) => {
-            const origin = typeof window !== "undefined" ? window.location.origin : "";
-            const roomUrl = `${origin}/rooms/${room.id}/participate`;
-            const { whatsapp, telegram } = shareLinks(roomUrl, room.title);
-            return (
-              <article
-                key={room.id}
-                className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-lg font-semibold text-slate-900">{room.title}</h3>
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">ID {room.id}</p>
-                    <p className="text-sm text-slate-500">Organizacao: {room.organizationName}</p>
+            {participantRooms.map((room) => {
+              const roomUrl = `${origin}/rooms/${room.id}/participate`;
+              return (
+                <article
+                  key={room.id}
+                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur"
+                >
+                  <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-6 py-5 text-white">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold">{room.title}</h3>
+                        <p className="text-xs uppercase tracking-[0.3em] text-white/70">Sala acompanhada</p>
+                      </div>
+                      <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium">Participante</span>
+                    </div>
                   </div>
-                  <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3">
-                    <QRCode value={roomUrl} size={96} bgColor="transparent" fgColor="#4338ca" />
+                  <div className="px-6 py-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Codigo</p>
+                        <div className="inline-flex items-center gap-2">
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{room.id}</span>
+                        </div>
+                      </div>
+                      <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3">
+                        <QRCode value={roomUrl} size={88} bgColor="transparent" fgColor="#4338ca" />
+                      </div>
+                    </div>
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      <Link
+                        href={`/rooms/${room.id}/participate`}
+                        className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
+                      >
+                        Entrar na sala
+                      </Link>
+                      {renderShareButton(room.id, room.title)}
+                      <button
+                        onClick={() => handleRemoveParticipantRoom(room.id)}
+                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
+                      >
+                        Remover da lista
+                      </button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    href={`/rooms/${room.id}/participate`}
-                    className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
-                  >
-                    Entrar na sala
-                  </Link>
-                  <a
-                    href={whatsapp}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-400"
-                  >
-                    WhatsApp
-                  </a>
-                  <a
-                    href={telegram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-sky-400"
-                  >
-                    Telegram
-                  </a>
-                  <button
-                    onClick={() => void handleCopy(room.id)}
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
-                  >
-                    Copiar link
-                  </button>
-                  <button
-                    onClick={() => handleRemoveParticipantRoom(room.id)}
-                    className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
-                  >
-                    Remover da minha lista
-                  </button>
-                </div>
-              </article>
-            );
-          })}
-        </section>
+                </article>
+              );
+            })}
+          </section>
+        )}
 
         <section className="grid gap-6 pb-16 sm:grid-cols-2">
           <div className="sm:col-span-2">
-            <h2 className="mb-4 text-xl font-semibold text-slate-900">Salas que organizo/modero</h2>
+            <h2 className="mb-4 text-xl font-semibold text-slate-900">Salas que organizo / modero</h2>
           </div>
-          {rooms.length === 0 ? (
+          {managedRooms.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-sm text-slate-500 shadow-sm">
               Nenhuma sala cadastrada ainda.
             </div>
           ) : (
-            rooms.map((room) => {
-              const origin = typeof window !== "undefined" ? window.location.origin : "";
-              const participantLink = `${origin}/rooms/${room.id}/participate`;
-              const { whatsapp, telegram } = shareLinks(participantLink, room.title);
+            managedRooms.map((room) => {
+              const roomUrl = `${origin}/rooms/${room.id}/participate`;
+              const stats = roomStats[room.id] ?? { total: 0, accepted: 0, pending: 0 };
               return (
                 <article
                   key={room.id}
-                  className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur"
+                  className="overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex flex-col gap-2">
-                      <h3 className="text-lg font-semibold text-slate-900">{room.title}</h3>
-                      <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">ID {room.id}</p>
-                      {room.moderatorEmail && (
-                        <p className="text-sm text-slate-500">
-                          Moderador: {room.moderatorName || "Convidado"} ({room.moderatorEmail})
-                        </p>
-                      )}
-                    </div>
-                    <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3">
-                      <QRCode value={participantLink} size={96} bgColor="transparent" fgColor="#4338ca" />
+                  <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-6 py-5 text-white">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="text-lg font-semibold">{room.title}</h3>
+                        <p className="text-xs uppercase tracking-[0.3em] text-white/70">{room.organizationName}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-400 px-3 py-1 text-xs font-medium text-emerald-900">Ativo</span>
                     </div>
                   </div>
+                  <div className="px-6 py-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Codigo da sala</p>
+                        <div className="inline-flex items-center gap-2">
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{room.id}</span>
+                          <button
+                            onClick={() => void handleCopy(room.id)}
+                            className="text-xs text-violet-600 underline underline-offset-4 transition hover:text-violet-500"
+                          >
+                            Copiar
+                          </button>
+                        </div>
+                        {room.createdAt && (
+                          <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                            <span className="text-slate-400">Criado em</span>
+                            {room.createdAt.toLocaleDateString("pt-BR", {
+                              day: "2-digit",
+                              month: "2-digit",
+                              year: "numeric",
+                            })}
+                          </p>
+                        )}
+                      </div>
+                      <div className="rounded-2xl border border-violet-100 bg-violet-50 p-3">
+                        <QRCode value={roomUrl} size={88} bgColor="transparent" fgColor="#4338ca" />
+                      </div>
+                    </div>
 
-                  <div className="flex flex-wrap gap-3">
-                    <button
-                      onClick={() => void handleCopy(room.id)}
-                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
-                    >
-                      Copiar link
-                    </button>
-                    <a
-                      href={whatsapp}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-emerald-400"
-                    >
-                      WhatsApp
-                    </a>
-                    <a
-                      href={telegram}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-full bg-sky-500 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-sky-400"
-                    >
-                      Telegram
-                    </a>
-                    <Link
-                      href={`/rooms/${room.id}/participate`}
-                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
-                    >
-                      Abrir participacao
-                    </Link>
-                    <Link
-                      href={`/rooms/${room.id}/moderate`}
-                      className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
-                    >
-                      Acessar moderacao
-                    </Link>
-                    {isOwner(room) && (
-                      <button
-                        onClick={() => void handleDeleteRoom(room)}
-                        disabled={removingRoomId === room.id}
-                        className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    <div className="mt-6 grid grid-cols-3 items-center gap-4 border-t border-slate-200 pt-4">
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-slate-900">{stats.total}</p>
+                        <p className="text-xs text-slate-500">Total</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-emerald-600">{stats.accepted}</p>
+                        <p className="text-xs text-slate-500">Aprovadas</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-amber-500">{stats.pending}</p>
+                        <p className="text-xs text-slate-500">Pendentes</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      {renderShareButton(room.id, room.title)}
+                      <Link
+                        href={`/rooms/${room.id}/participate`}
+                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
                       >
-                        {removingRoomId === room.id ? "Excluindo..." : "Excluir sala"}
-                      </button>
-                    )}
+                        Ver sala
+                      </Link>
+                      {canModerateRoom(room) && (
+                        <Link
+                          href={`/rooms/${room.id}/moderate`}
+                          className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
+                        >
+                          Moderar
+                        </Link>
+                      )}
+                      {isOwner(room) && (
+                        <button
+                          onClick={() => void handleDeleteRoom(room)}
+                          disabled={removingRoomId === room.id}
+                          className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {removingRoomId === room.id ? "Excluindo..." : "Excluir"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </article>
               );
@@ -335,4 +545,3 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
-

@@ -253,8 +253,6 @@ export default function DashboardPage() {
     return Array.from(map.values());
   }, [managedRooms, participantRooms, email]);
 
-  const hasRooms = displayRooms.length > 0;
-
 
   const handleCopy = async (roomId: string) => {
     if (typeof window === "undefined") return;

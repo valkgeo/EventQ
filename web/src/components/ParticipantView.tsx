@@ -40,6 +40,18 @@ interface ParticipantQuestion {
   likedBy?: string[];
 }
 
+type QuestionDoc = {
+  text?: string;
+  status?: "pending" | "accepted" | "rejected" | string;
+  isAnonymous?: boolean;
+  participantName?: string | null;
+  participantId?: string | null;
+  createdAt?: { toDate?: () => Date };
+  highlighted?: boolean;
+  likedBy?: string[];
+  likeCount?: number;
+};
+
 const readJoinedRooms = () => {
   if (typeof window === "undefined") return [] as string[];
   try {
@@ -180,7 +192,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
     const unsubscribe = onSnapshot(roomQuery, (snapshot) => {
       const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-        const data = document.data() as any;
+        const data = document.data() as QuestionDoc;
         return {
           id: document.id,
           text: data.text ?? "",

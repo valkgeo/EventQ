@@ -240,7 +240,7 @@ export default function DashboardPage() {
     };
   }, [managedRooms]);
 
-  function TrashButton({
+    function TrashButton({
     room,
     role,
     isOwner,
@@ -258,8 +258,9 @@ export default function DashboardPage() {
         <button
           onClick={() => handleDeleteRoom(room)}
           disabled={removing}
-          className={`absolute right-4 top-4 rounded-full border border-rose-200 bg-rose-50 p-2 text-rose-600 shadow-sm transition
-            hover:border-rose-300 hover:text-rose-700 ${removing ? "cursor-wait opacity-70" : ""}`}
+          className={`absolute right-4 bottom-4 z-10 rounded-full border border-rose-200 bg-rose-50 p-2
+            text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700
+            ${removing ? "cursor-wait opacity-70" : ""}`}
           aria-label={`Excluir sala ${room.title}`}
           type="button"
         >
@@ -267,6 +268,19 @@ export default function DashboardPage() {
         </button>
       );
     }
+
+    return (
+      <button
+        onClick={() => handleRemoveParticipantRoom(room.id)}
+        className="absolute right-4 bottom-4 z-10 rounded-full border border-slate-200 bg-white p-2
+                  text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+        aria-label={`Remover sala ${room.title} da sua lista`}
+        type="button"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    );
+  }
 
     return (
       <button

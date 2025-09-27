@@ -20,7 +20,7 @@ const flow = [
   },
   {
     title: "3. Compartilhe no seu evento",
-    desc: "Mostre as perguntas selecionadas e gerencie ao vivo.",
+    desc: "Moderadores mostram ou leêm as perguntas selecionadas e gerenciam ao vivo.",
     type: "share",
   },
 ];
@@ -40,21 +40,32 @@ export default function Home() {
       {/* blobs suaves */}
       <div className="pointer-events-none absolute -left-24 top-16 h-80 w-80 rounded-[40%] bg-violet-200/40 blur-3xl" />
       <div className="pointer-events-none absolute -right-32 top-24 h-72 w-72 rounded-[40%] bg-sky-200/45 blur-3xl" />
-      <div className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-[45%] bg-indigo-200/35 blur-[100px]" />
+      <div className="pointer-events-none absolute -left-40 bottom-0 h-96 w-96 rounded-[45%] bg-purple-200/35 blur-[100px]" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-24 px-6 py-20">
+      <div className="relative mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-24 px-6 py-20">
         {/* HERO */}
-        <section className="grid items-center gap-12 md:grid-cols-2">
-          {/* Texto */}
-          <div className="max-w-xl space-y-8">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] shadow-sm">
-              <span className="text-slate-900">Events</span>
-              <span className="text-blue-600">Q</span>
-            </span>
+        <section className="grid items-center gap-8 md:grid-cols-12">
+          {/* Texto (7 colunas) */}
+          <div className="md:col-span-7 max-w-2xl space-y-8">
+            {/* Brand grande com logo */}
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logotipo.png"     // coloque seu arquivo em /public/logotipo.png
+                alt="Logo EventsQ"
+                width={36}
+                height={36}
+                className="h-9 w-9 rounded-md"
+                priority
+              />
+              <div className="text-2xl font-semibold tracking-tight">
+                <span className="text-slate-900">Events</span>
+                <span className="text-purple-600">Q</span>
+              </div>
+            </div>
 
             <div className="space-y-5">
-              <h1 className="text-balance text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl lg:text-6xl">
-                Perguntas inteligentes para eventos memoráveis.
+              <h1 className="text-4xl font-semibold leading-tight tracking-tight text-slate-900 md:text-5xl lg:text-6xl">
+                <span className="whitespace-nowrap">Perguntas{"\u00A0"}inteligentes para</span> eventos memoráveis.
               </h1>
               <p className="text-base text-slate-600 md:text-lg">
                 Crie salas em segundos, distribua um QR Code elegante e mantenha a conversa fluindo com moderação refinada.
@@ -64,7 +75,10 @@ export default function Home() {
             <div className="flex flex-col gap-4 sm:flex-row">
               <Link
                 href="/register"
-                className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-sky-500 to-violet-600 px-6 py-3 text-sm font-medium text-white shadow-lg shadow-violet-600/25 transition hover:brightness-110"
+                className="inline-flex items-center justify-center rounded-full 
+                          bg-gradient-to-r from-purple-500 to-violet-600 
+                          px-6 py-3 text-sm font-medium text-white 
+                          shadow-lg shadow-violet-600/25 transition hover:brightness-110"
               >
                 Comece agora →
               </Link>
@@ -77,14 +91,13 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Ilustração */}
-          <div className="relative flex items-center justify-center">
+          {/* Ilustração (5 colunas) */}
+          <div className="md:col-span-5 flex items-center justify-center">
             <Image
               src="/Plateia_EventQ.png"
               alt="Apresentador mostrando QR Code para a plateia"
-              width={640}
-              height={480}
-              className="h-auto w-full max-w-lg"
+              width={820}
+              height={560}
               priority
             />
           </div>
@@ -114,12 +127,12 @@ export default function Home() {
           <div className="grid gap-8 md:grid-cols-3">
             {flow.map(({ title, desc, type }) => (
               <div key={title} className="space-y-4">
-                <div className="rounded-2xl bg-indigo-600 p-5 text-white shadow-lg ring-1 ring-indigo-800/40">
+                <div className="rounded-2xl bg-purple-600 p-5 text-white shadow-lg ring-1 ring-purple-800/40">
                   {type === "create" && (
                     <div className="grid grid-cols-[1fr_auto] gap-4 items-center">
                       <div>
                         <div className="text-sm font-semibold opacity-90">eventsq</div>
-                        <div className="mt-2 text-indigo-100">
+                        <div className="mt-2 text-purple-100">
                           Entrar em <span className="font-semibold">eventsq.app</span>
                           <br />
                           <span className="opacity-90">#SalaExemplo</span>
@@ -139,27 +152,27 @@ export default function Home() {
 
                   {type === "collect" && (
                     <div className="space-y-3">
-                      <div className="rounded-xl bg-indigo-700/60 p-3">
+                      <div className="rounded-xl bg-purple-700/60 p-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-indigo-500/70" />
-                          <div className="h-2 w-40 rounded bg-indigo-300/60" />
+                          <div className="h-7 w-7 rounded-full bg-purple-500/70" />
+                          <div className="h-2 w-40 rounded bg-purple-300/60" />
                           <div className="ml-auto flex items-center gap-1 rounded-full bg-white/15 px-2 py-1 text-xs">
                             <span className="font-bold">13</span>
                             <span>👍</span>
                           </div>
                         </div>
-                        <div className="mt-2 h-2 w-56 rounded bg-indigo-300/40" />
+                        <div className="mt-2 h-2 w-56 rounded bg-purple-300/40" />
                       </div>
-                      <div className="rounded-xl bg-indigo-700/40 p-3">
+                      <div className="rounded-xl bg-purple-700/40 p-3">
                         <div className="flex items-center gap-2">
-                          <div className="h-7 w-7 rounded-full bg-indigo-500/60" />
-                          <div className="h-2 w-32 rounded bg-indigo-300/50" />
+                          <div className="h-7 w-7 rounded-full bg-purple-500/60" />
+                          <div className="h-2 w-32 rounded bg-purple-300/50" />
                           <div className="ml-auto flex items-center gap-1 rounded-full bg-white/10 px-2 py-1 text-xs">
                             <span className="font-bold">6</span>
                             <span>👍</span>
                           </div>
                         </div>
-                        <div className="mt-2 h-2 w-48 rounded bg-indigo-300/30" />
+                        <div className="mt-2 h-2 w-48 rounded bg-purple-300/30" />
                       </div>
                     </div>
                   )}
@@ -167,17 +180,17 @@ export default function Home() {
                   {type === "share" && (
                     <div className="grid grid-cols-[auto_1fr] gap-3">
                       <div className="flex flex-col gap-2 pt-1">
-                        <div className="h-1.5 w-8 rounded bg-indigo-200/70" />
-                        <div className="h-1.5 w-6 rounded bg-indigo-200/60" />
-                        <div className="h-1.5 w-10 rounded bg-indigo-200/60" />
+                        <div className="h-1.5 w-8 rounded bg-purple-200/70" />
+                        <div className="h-1.5 w-6 rounded bg-purple-200/60" />
+                        <div className="h-1.5 w-10 rounded bg-purple-200/60" />
                       </div>
                       <div className="space-y-2">
                         {[32, 18, 0].map((likes, i) => (
                           <div
                             key={i}
-                            className="flex items-center gap-3 rounded-lg bg-indigo-700/50 px-3 py-2"
+                            className="flex items-center gap-3 rounded-lg bg-purple-700/50 px-3 py-2"
                           >
-                            <div className="h-2 w-40 rounded bg-indigo-200/60" />
+                            <div className="h-2 w-40 rounded bg-purple-200/60" />
                             <div className="ml-auto flex items-center gap-1 text-xs opacity-90">
                               <span className="rounded bg-white/15 px-1.5 py-0.5">{likes}</span>
                               <span>👍</span>
@@ -211,7 +224,7 @@ export default function Home() {
         >
           CC BY-NC 4.0
         </a>{" "}
-        – uso, cópia e modificação permitidos apenas em contextos não comerciais.
+        – Cópia e modificação permitidos apenas em contextos não comerciais.
       </footer>
     </main>
   );

@@ -240,41 +240,28 @@ export default function DashboardPage() {
     };
   }, [managedRooms]);
 
-      function TrashButton({
-      room,
-      role,
-      isOwner,
-      removing,
-    }: {
-      room: Room;
-      role: "moderator" | "participant";
-      isOwner: boolean;
-      removing: boolean;
-    }) {
-      const isModerator = role === "moderator" || isOwner;
+    function TrashButton({
+    room,
+    role,
+    isOwner,
+    removing,
+  }: {
+    room: Room;
+    role: "moderator" | "participant";
+    isOwner: boolean;
+    removing: boolean;
+  }) {
+    const isModerator = role === "moderator" || isOwner;
 
-      if (isModerator) {
-        return (
-          <button
-            onClick={() => handleDeleteRoom(room)}
-            disabled={removing}
-            className={`absolute right-4 bottom-4 z-10 rounded-full border border-rose-200 bg-rose-50 p-2
-              text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700
-              ${removing ? "cursor-wait opacity-70" : ""}`}
-            aria-label={`Excluir sala ${room.title}`}
-            type="button"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        );
-      }
-
+    if (isModerator) {
       return (
         <button
-          onClick={() => handleRemoveParticipantRoom(room.id)}
-          className="absolute right-4 bottom-4 z-10 rounded-full border border-slate-200 bg-white p-2
-                    text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
-          aria-label={`Remover sala ${room.title} da sua lista`}
+          onClick={() => handleDeleteRoom(room)}
+          disabled={removing}
+          className={`absolute right-4 bottom-4 z-10 rounded-full border border-rose-200 bg-rose-50 p-2
+            text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700
+            ${removing ? "cursor-wait opacity-70" : ""}`}
+          aria-label={`Excluir sala ${room.title}`}
           type="button"
         >
           <Trash2 className="h-4 w-4" />
@@ -285,7 +272,8 @@ export default function DashboardPage() {
     return (
       <button
         onClick={() => handleRemoveParticipantRoom(room.id)}
-        className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white p-2 text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+        className="absolute right-4 bottom-4 z-10 rounded-full border border-slate-200 bg-white p-2
+                  text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
         aria-label={`Remover sala ${room.title} da sua lista`}
         type="button"
       >
@@ -293,6 +281,7 @@ export default function DashboardPage() {
       </button>
     );
   }
+
 
 
   useEffect(() => {
@@ -644,111 +633,111 @@ export default function DashboardPage() {
               const isModerator = role === "moderator";
               return (
                 <article key={room.id} className={roomCardClass}>
-                  <TrashButton
-                    room={room}
-                    role={role}
-                    isOwner={isOwner}
-                    removing={removingRoomId === room.id}
-                  />
+                <TrashButton
+                  room={room}
+                  role={role}
+                  isOwner={isOwner}
+                  removing={removingRoomId === room.id}
+                />
 
-                  <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-6 py-5 text-white">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold">{room.title}</h3>
-                        <p className="text-xs uppercase tracking-[0.3em] text-white/70">
-                          {room.organizationName}
-                        </p>
-                      </div>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-medium ${
-                          isModerator ? "bg-emerald-400 text-emerald-900" : "bg-white/20 text-white"
-                        }`}
-                      >
-                        {isModerator ? "Moderador" : "Participante"}
-                      </span>
+                <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-6 py-5 text-white">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-lg font-semibold">{room.title}</h3>
+                      <p className="text-xs uppercase tracking-[0.3em] text-white/70">
+                        {room.organizationName}
+                      </p>
                     </div>
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-medium ${
+                        isModerator ? "bg-emerald-400 text-emerald-900" : "bg-white/20 text-white"
+                      }`}
+                    >
+                      {isModerator ? "Moderador" : "Participante"}
+                    </span>
                   </div>
+                </div>
 
-                  <div className="px-6 py-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex flex-col gap-2">
-                        <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Código</p>
-                        <div className="inline-flex items-center gap-2">
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
-                            {room.id}
-                          </span>
-                          <button
-                            onClick={() => void handleCopy(room.id)}
-                            className="text-xs text-violet-600 underline underline-offset-4 transition hover:text-violet-500"
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                        {room.createdAt && (
-                          <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
-                            <span className="text-slate-400">Criado em</span>
-                            {room.createdAt.toLocaleDateString("pt-BR", {
-                              day: "2-digit",
-                              month: "2-digit",
-                              year: "numeric",
-                            })}
-                          </p>
-                        )}
-                      </div>
-
-                      <button
-                        onClick={() => setQrPreview({ room, url: roomUrl })}
-                        className="rounded-2xl border border-violet-100 bg-violet-50 p-3 transition hover:border-violet-200 hover:bg-violet-100"
-                        aria-label={`Visualizar QR Code da sala ${room.title}`}
-                        type="button"
-                      >
-                        <QRCode value={roomUrl} size={88} bgColor="transparent" fgColor="#4338ca" />
-                      </button>
-                    </div>
-
-                    {isModerator && (
-                      <div className="mt-6 grid grid-cols-3 items-center gap-4 border-t border-slate-200 pt-4">
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-slate-900">{stats.total}</p>
-                          <p className="text-xs text-slate-500">Total</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-emerald-600">{stats.accepted}</p>
-                          <p className="text-xs text-slate-500">Aprovadas</p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-lg font-semibold text-amber-500">{stats.pending}</p>
-                          <p className="text-xs text-slate-500">Pendentes</p>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="mt-6 flex flex-wrap gap-3">
-                      {renderShareButton(room.id, room.title)}
-                      <Link
-                        href={`/rooms/${room.id}/participate`}
-                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
-                      >
-                        Ver sala
-                      </Link>
-                      {isModerator ? (
-                        <Link
-                          href={`/rooms/${room.id}/moderate`}
-                          className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
-                        >
-                          Moderar
-                        </Link>
-                      ) : (
+                <div className="px-6 py-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Código</p>
+                      <div className="inline-flex items-center gap-2">
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
+                          {room.id}
+                        </span>
                         <button
-                          onClick={() => handleRemoveParticipantRoom(room.id)}
-                          className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
+                          onClick={() => void handleCopy(room.id)}
+                          className="text-xs text-violet-600 underline underline-offset-4 transition hover:text-violet-500"
                         >
-                          Remover da lista
+                          Copiar
                         </button>
+                      </div>
+                      {room.createdAt && (
+                        <p className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                          <span className="text-slate-400">Criado em</span>
+                          {room.createdAt.toLocaleDateString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                          })}
+                        </p>
                       )}
                     </div>
+
+                    <button
+                      onClick={() => setQrPreview({ room, url: roomUrl })}
+                      className="rounded-2xl border border-violet-100 bg-violet-50 p-3 transition hover:border-violet-200 hover:bg-violet-100"
+                      aria-label={`Visualizar QR Code da sala ${room.title}`}
+                      type="button"
+                    >
+                      <QRCode value={roomUrl} size={88} bgColor="transparent" fgColor="#4338ca" />
+                    </button>
                   </div>
-                </article>
+
+                  {isModerator && (
+                    <div className="mt-6 grid grid-cols-3 items-center gap-4 border-t border-slate-200 pt-4">
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-slate-900">{stats.total}</p>
+                        <p className="text-xs text-slate-500">Total</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-emerald-600">{stats.accepted}</p>
+                        <p className="text-xs text-slate-500">Aprovadas</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-amber-500">{stats.pending}</p>
+                        <p className="text-xs text-slate-500">Pendentes</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    {renderShareButton(room.id, room.title)}
+                    <Link
+                      href={`/rooms/${room.id}/participate`}
+                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+                    >
+                      Ver sala
+                    </Link>
+                    {isModerator ? (
+                      <Link
+                        href={`/rooms/${room.id}/moderate`}
+                        className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
+                      >
+                        Moderar
+                      </Link>
+                    ) : (
+                      <button
+                        onClick={() => handleRemoveParticipantRoom(room.id)}
+                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
+                      >
+                        Remover da lista
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
               );
             })}
           </section>

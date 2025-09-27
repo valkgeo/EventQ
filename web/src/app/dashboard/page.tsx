@@ -592,7 +592,8 @@ export default function DashboardPage() {
                   {isOwner && (
                     <button
                       onClick={() => handleDeleteRoom(room)}
-                      className="absolute right-4 top-4 rounded-full border border-rose-200 bg-rose-50 p-2 text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700"
+                      disabled={removingRoomId === room.id}
+                      className={`absolute right-4 top-4 rounded-full border border-rose-200 bg-rose-50 p-2 text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 ${removingRoomId === room.id ? "cursor-wait opacity-70" : ""}`}
                       aria-label={`Excluir sala ${room.title}`}
                     >
                       <Trash2 className="h-4 w-4" />

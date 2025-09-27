@@ -1,5 +1,6 @@
 ﻿"use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   addDoc,
@@ -16,6 +17,7 @@ import { db } from "@/lib/firebase";
 import { getRoom } from "@/lib/rooms";
 import { sanitizeQuestion } from "@/lib/profanityFilter";
 import { useParticipantId } from "@/hooks/useParticipantId";
+import { useAuth } from "@/context/AuthContext";
 
 interface ParticipantQuestion {
   id: string;
@@ -28,7 +30,9 @@ interface ParticipantQuestion {
 
 export const ParticipantView = ({ roomId }: { roomId: string }) => {
   const participantId = useParticipantId();
+  const { user } = useAuth();
   const [roomName, setRoomName] = useState<string>("");
+  const [allowedEmails, setAllowedEmails] = useState<string[]>([]);
   const [isRoomLoading, setIsRoomLoading] = useState(true);
   const [question, setQuestion] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -46,6 +50,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         setError("Sala nao encontrada ou indisponivel.");
       } else {
         setRoomName(room.title);
+        setAllowedEmails(room.allowedEmails);
       }
       setIsRoomLoading(false);
     };
@@ -63,20 +68,27 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       orderBy("createdAt", "desc")
     );
 
-    const unsubscribe = onSnapshot(roomQuery, (snapshot) => {
-      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-        const data = document.data();
-        return {
-          id: document.id,
-          text: (data.text as string) ?? "",
-          status: (data.status as string) ?? "pending",
-          isAnonymous: Boolean(data.isAnonymous),
-          participantName: (data.participantName as string | undefined) || undefined,
-          createdAt: data.createdAt?.toDate?.(),
-        };
-      });
-      setQuestions(entries);
-    });
+    const unsubscribe = onSnapshot(
+      roomQuery,
+      (snapshot) => {
+        const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
+          const data = document.data();
+          return {
+            id: document.id,
+            text: (data.text as string) ?? "",
+            status: (data.status as string) ?? "pending",
+            isAnonymous: Boolean(data.isAnonymous),
+            participantName: (data.participantName as string | undefined) || undefined,
+            createdAt: data.createdAt?.toDate?.(),
+          };
+        });
+        setQuestions(entries);
+      },
+      (subscriptionError) => {
+        console.error(subscriptionError);
+        setError("Nao foi possivel carregar seu historico agora.");
+      }
+    );
 
     return () => unsubscribe();
   }, [participantId, roomId]);
@@ -98,7 +110,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     try {
       const cleaned = sanitizeQuestion(question);
       const questionsRef = collection(db, "rooms", roomId, "questions");
-      await addDoc(questionsRef, {
+      const docRef = await addDoc(questionsRef, {
         text: cleaned,
         participantId,
         participantName: isAnonymous ? null : participantName.trim() || null,
@@ -107,6 +119,19 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
+
+      setQuestions((current) => [
+        {
+          id: docRef.id,
+          text: cleaned,
+          status: "pending",
+          isAnonymous,
+          participantName: isAnonymous ? undefined : participantName.trim() || undefined,
+          createdAt: new Date(),
+        },
+        ...current,
+      ]);
+
       setQuestion("");
       setParticipantName("");
       setFeedback("Pergunta enviada. Obrigado!");
@@ -122,12 +147,19 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     setError(null);
     try {
       await deleteDoc(doc(db, "rooms", roomId, "questions", questionId));
+      setQuestions((current) => current.filter((entry) => entry.id !== questionId));
       setFeedback("Pergunta removida.");
     } catch (removeError) {
       console.error(removeError);
       setError("Nao foi possivel remover agora.");
     }
   };
+
+  const canModerate = useMemo(() => {
+    const email = user?.email?.toLowerCase();
+    if (!email) return false;
+    return allowedEmails.map((item) => item.toLowerCase()).includes(email);
+  }, [allowedEmails, user?.email]);
 
   if (isRoomLoading || !participantId) {
     return (
@@ -149,10 +181,30 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-10 px-6 py-16">
-      <header className="flex flex-col gap-2 text-center">
-        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Sala</p>
-        <h1 className="text-2xl font-semibold text-slate-900">Envie sua pergunta</h1>
-        <p className="text-sm text-slate-600">{roomName}</p>
+      <header className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Sala</p>
+          <h1 className="text-2xl font-semibold text-slate-900">Envie sua pergunta</h1>
+          <p className="text-sm text-slate-600">{roomName}</p>
+        </div>
+        {user && (
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/hall"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+            >
+              Voltar ao hall
+            </Link>
+            {canModerate && (
+              <Link
+                href={`/rooms/${roomId}/moderate`}
+                className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
+              >
+                Acessar moderacao
+              </Link>
+            )}
+          </div>
+        )}
       </header>
 
       <form

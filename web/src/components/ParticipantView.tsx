@@ -186,33 +186,42 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     const questionsRef = collection(db, "rooms", roomId, "questions");
     const roomQuery = query(
       questionsRef,
-      where("participantId", "==", participantId),
-      orderBy("createdAt", "desc")
+      where("participantId", "==", participantId)
     );
 
-    const unsubscribe = onSnapshot(roomQuery, (snapshot) => {
-      const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
-        const data = document.data() as QuestionDoc;
-        return {
-          id: document.id,
-          text: data.text ?? "",
-          status: data.status ?? "pending",
-          isAnonymous: !!data.isAnonymous,
-          participantName: (data.participantName as string | undefined) || undefined,
-          participantId: (data.participantId as string | undefined) || undefined,
-          createdAt: data.createdAt?.toDate?.(),
-          highlighted: !!data.highlighted,
-          likeCount:
-            typeof data.likeCount === "number"
-              ? data.likeCount
-              : Array.isArray(data.likedBy)
-              ? data.likedBy.length
-              : 0,
-          likedBy: (data.likedBy as string[]) ?? [],
-        };
-      });
-      setQuestions(entries);
-    });
+    const unsubscribe = onSnapshot(
+      roomQuery,
+      (snapshot) => {
+        const entries: ParticipantQuestion[] = snapshot.docs.map((document) => {
+          const data = document.data() as QuestionDoc; // se usou o tipo do patch anterior
+          return {
+            id: document.id,
+            text: data.text ?? "",
+            status: (data.status as string) ?? "pending",
+            isAnonymous: !!data.isAnonymous,
+            participantName: (data.participantName as string | undefined) || undefined,
+            participantId: (data.participantId as string | undefined) || undefined,
+            createdAt: data.createdAt?.toDate?.(),
+            highlighted: !!data.highlighted,
+            likeCount:
+              typeof data.likeCount === "number"
+                ? data.likeCount
+                : Array.isArray(data.likedBy) ? data.likedBy.length : 0,
+            likedBy: (data.likedBy as string[]) ?? [],
+          };
+        })
+        // ordena no cliente por createdAt desc
+        .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+
+        setQuestions(entries);
+      },
+      (err) => {
+        console.error("onSnapshot (minhas perguntas) falhou:", err);
+        // opcional: mostre um aviso amigável
+        // setRoomError("Não foi possível carregar suas perguntas agora.");
+      }
+    );
+
 
     return () => unsubscribe();
   }, [participantId, roomId, isRoomLoading, roomError]);

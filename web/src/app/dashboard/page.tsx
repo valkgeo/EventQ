@@ -240,6 +240,47 @@ export default function DashboardPage() {
     };
   }, [managedRooms]);
 
+  function TrashButton({
+    room,
+    role,
+    isOwner,
+    removing,
+  }: {
+    room: Room;
+    role: "moderator" | "participant";
+    isOwner: boolean;
+    removing: boolean;
+  }) {
+    const isModerator = role === "moderator" || isOwner;
+
+    if (isModerator) {
+      return (
+        <button
+          onClick={() => handleDeleteRoom(room)}
+          disabled={removing}
+          className={`absolute right-4 top-4 rounded-full border border-rose-200 bg-rose-50 p-2 text-rose-600 shadow-sm transition
+            hover:border-rose-300 hover:text-rose-700 ${removing ? "cursor-wait opacity-70" : ""}`}
+          aria-label={`Excluir sala ${room.title}`}
+          type="button"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={() => handleRemoveParticipantRoom(room.id)}
+        className="absolute right-4 top-4 rounded-full border border-slate-200 bg-white p-2 text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+        aria-label={`Remover sala ${room.title} da sua lista`}
+        type="button"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    );
+  }
+
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -589,21 +630,20 @@ export default function DashboardPage() {
               const isModerator = role === "moderator";
               return (
                 <article key={room.id} className={roomCardClass}>
-                  {isOwner && (
-                    <button
-                      onClick={() => handleDeleteRoom(room)}
-                      disabled={removingRoomId === room.id}
-                      className={`absolute right-4 top-4 rounded-full border border-rose-200 bg-rose-50 p-2 text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 ${removingRoomId === room.id ? "cursor-wait opacity-70" : ""}`}
-                      aria-label={`Excluir sala ${room.title}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  )}
+                  <TrashButton
+                    room={room}
+                    role={role}
+                    isOwner={isOwner}
+                    removing={removingRoomId === room.id}
+                  />
+
                   <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-6 py-5 text-white">
                     <div className="flex items-start justify-between">
                       <div>
                         <h3 className="text-lg font-semibold">{room.title}</h3>
-                        <p className="text-xs uppercase tracking-[0.3em] text-white/70">{room.organizationName}</p>
+                        <p className="text-xs uppercase tracking-[0.3em] text-white/70">
+                          {room.organizationName}
+                        </p>
                       </div>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-medium ${
@@ -614,12 +654,15 @@ export default function DashboardPage() {
                       </span>
                     </div>
                   </div>
+
                   <div className="px-6 py-5">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex flex-col gap-2">
                         <p className="text-xs uppercase tracking-[0.3em] text-slate-400">Código</p>
                         <div className="inline-flex items-center gap-2">
-                          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">{room.id}</span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-medium text-slate-600">
+                            {room.id}
+                          </span>
                           <button
                             onClick={() => void handleCopy(room.id)}
                             className="text-xs text-violet-600 underline underline-offset-4 transition hover:text-violet-500"
@@ -638,6 +681,7 @@ export default function DashboardPage() {
                           </p>
                         )}
                       </div>
+
                       <button
                         onClick={() => setQrPreview({ room, url: roomUrl })}
                         className="rounded-2xl border border-violet-100 bg-violet-50 p-3 transition hover:border-violet-200 hover:bg-violet-100"

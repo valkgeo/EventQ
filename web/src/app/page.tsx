@@ -29,7 +29,7 @@ export default function Home() {
         <section className="grid items-center gap-12 md:grid-cols-2">
           <div className="max-w-xl space-y-8">
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-500 shadow-sm">
-              EventQ
+              EventsQ
             </span>
             <div className="space-y-5">
               <h1 className="text-balance text-4xl font-semibold tracking-tight text-slate-900 md:text-5xl lg:text-6xl">

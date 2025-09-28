@@ -382,10 +382,20 @@ export default function DashboardPage() {
         createdBy: user.uid,
       });
 
-      writeJoinedRooms([roomId, ...readJoinedRooms()]);
+      // NÃO adiciona ao JOINED_ROOMS (isso é para participantes).
+      // writeJoinedRooms([roomId, ...readJoinedRooms()]);  <-- REMOVIDO
+
       setForm(initialForm);
-      showFeedback("Sala criada com sucesso!");
-      router.push(`/rooms/${roomId}/moderate`);
+      setShowCreateForm(false);             // fecha o formulário
+      showFeedback("Sala criada com sucesso!", true);
+
+      // Opcional: já abre o QR Code em um modal
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const roomUrl = `${origin}/rooms/${roomId}/participate`;
+      setQrPreview({ room: { ...(await getRoom(roomId))! }, url: roomUrl });
+
+      // NÃO navega para a moderação; permanece no dashboard.
+      // router.push(`/rooms/${roomId}/moderate`);          <-- REMOVIDO
     } catch (error) {
       console.error(error);
       showFeedback("Não foi possível criar a sala agora.");
@@ -393,6 +403,7 @@ export default function DashboardPage() {
       setCreatingRoom(false);
     }
   };
+
 
   const renderShareButton = (roomId: string, title: string) => {
     const url = `${origin}/rooms/${roomId}/participate`;

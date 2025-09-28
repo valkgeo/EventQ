@@ -2,9 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 
 const features = [
-  { title: "Perguntas sem atrito", description: "Participantes entram via QR Code e enviam, de forma anônima ou identificada, perguntas anônimas ou identificadas sem ver os outros envios." },
+  { title: "Perguntas sem atrito", description: "Participantes entram via QR Code e enviam perguntas anônimas ou identificadas sem ver os outros envios." },
   { title: "Moderação em tempo real", description: "Aceite, recuse ou limpe filas inteiras com poucos cliques enquanto acompanha o evento." },
-  { title: "Design minimalista", description: "Um painel elegante, responsivo e pensado para eventos corporativos, workshops e meetups." },
+  { title: "Design minimalista", description: "Um painel elegante, responsivo e pensado para eventos corporativos, workshops, eventos científicos, meetups etc." },
 ];
 
 const flow = [
@@ -15,7 +15,7 @@ const flow = [
   },
   {
     title: "2. Colete perguntas",
-    desc: "As pessoas enviam e podem dar like nas perguntas que querem ver respondidas.",
+    desc: "As pessoas enviam perguntas e podem dar like nas que a moderação destacar e querem ver respondidas.",
     type: "collect",
   },
   {
@@ -76,7 +76,7 @@ export default function Home() {
                 </span>
               </h1>
               <p className="text-base text-slate-600 md:text-lg">
-                Crie salas em segundos, distribua um QR Code elegante e mantenha a conversa fluindo com moderação refinada.
+                Crie salas em segundos, distribua um QR Code elegante e receba perguntas com moderação fácil e refinada – tudo 100% grátis.
               </p>
             </div>
 

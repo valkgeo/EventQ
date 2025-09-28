@@ -15,13 +15,10 @@ import {
   updateDoc,
   writeBatch,
 } from "firebase/firestore";
-import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
-import { getRoom, deleteRoomWithQuestions } from "@/lib/rooms";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { SignOutButton } from "@/components/SignOutButton";
-import { useAuth } from "@/context/AuthContext";
-
+import { getRoom } from "@/lib/rooms";
+import { ArrowLeft } from "lucide-react";
 interface ModeratedQuestion {
   id: string;
   text: string;
@@ -45,15 +42,12 @@ const filterLabels: Record<FilterOption, string> = {
 };
 
 export const ModeratorView = ({ roomId }: { roomId: string }) => {
-  const router = useRouter();
-  const { user } = useAuth();
   const [room, setRoom] = useState<Awaited<ReturnType<typeof getRoom>> | null>(null);
   const [loadingRoom, setLoadingRoom] = useState(true);
   const [questions, setQuestions] = useState<ModeratedQuestion[]>([]);
   const [filter, setFilter] = useState<FilterOption>("pending");
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deletingRoom, setDeletingRoom] = useState(false);
 
   useEffect(() => {
     const loadRoom = async () => {
@@ -176,22 +170,6 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     }
   };
 
-  const handleDeleteRoom = async () => {
-    if (!room) return;
-    const confirmation = window.confirm("Tem certeza que deseja excluir esta sala? Essa acao remove todas as perguntas.");
-    if (!confirmation) return;
-
-    setDeletingRoom(true);
-    try {
-      await deleteRoomWithQuestions(roomId);
-      router.push("/hall");
-    } catch (deleteError) {
-      console.error(deleteError);
-      setError("Nao foi possivel excluir a sala agora.");
-      setDeletingRoom(false);
-    }
-  };
-
   if (loadingRoom) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white/70 text-slate-500">
@@ -210,10 +188,8 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     );
   }
 
-  const isOwner = user?.email?.toLowerCase() === room.organizationEmail.toLowerCase();
-
   return (
-    <ProtectedRoute allowedEmails={room.allowedEmails}>
+    <ProtectedRoute allowedEmails={[...room.allowedEmails, room.organizationEmail]}>
       <div className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-10 px-6 py-16">
         <header className="flex flex-col gap-6 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
@@ -226,19 +202,13 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href="/hall"
-              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+              aria-label="Voltar ao hall"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+              title="Voltar ao hall"
             >
-              Voltar ao hall
+              <ArrowLeft className="h-4 w-4" />
             </Link>
-            {isOwner && (
-              <button
-                onClick={handleDeleteRoom}
-                disabled={deletingRoom || processing}
-                className="inline-flex items-center justify-center rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-xs font-medium text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {deletingRoom ? "Excluindo..." : "Excluir sala"}
-              </button>
-            )}
+
             <button
               onClick={() => void handleBulkStatus("accepted")}
               disabled={processing || counts.pending === 0}
@@ -246,6 +216,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
             >
               Aprovar todas
             </button>
+
             <button
               onClick={() => void handleBulkStatus("rejected")}
               disabled={processing || counts.pending === 0}
@@ -253,6 +224,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
             >
               Rejeitar todas
             </button>
+
             <button
               onClick={handleClear}
               disabled={processing || counts.all === 0}
@@ -260,7 +232,6 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
             >
               Limpar historico
             </button>
-            <SignOutButton />
           </div>
         </header>
 

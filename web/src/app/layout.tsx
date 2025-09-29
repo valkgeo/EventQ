@@ -17,6 +17,11 @@ export const metadata: Metadata = {
   title: "EventQ",
   description:
     "Gerencie perguntas em tempo real em eventos com moderacao elegante e QR Code para participantes.",
+  icons: {
+    icon: "/logotipo.png",      // favicon padrão
+    shortcut: "/logotipo.png",  // fallback
+    apple: "/logotipo.png",     // ícone para iOS
+  },
 };
 
 export default function RootLayout({

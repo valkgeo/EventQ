@@ -537,7 +537,7 @@ export default function DashboardPage() {
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-10 px-6 py-16">
         <header className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Salas do EventQ</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Salas do EventsQ</p>
             <h1 className="text-3xl font-semibold text-slate-900">Painel e Hall</h1>
             <p className="text-sm text-slate-600">
               Gerencie, compartilhe e acompanhe as salas do seu evento.

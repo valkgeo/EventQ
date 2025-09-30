@@ -15,13 +15,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EventQ",
+  title: "EventsQ",
   description:
-    "Gerencie perguntas em tempo real em eventos com moderacao elegante e QR Code para participantes.",
+    "Facilite a interação nos seus eventos: receba perguntas via QR Code, modere com praticidade e mantenha o público conectado, totalmente gratuito.",
   icons: {
-    icon: "/logotipo.png",      // favicon padrão
-    shortcut: "/logotipo.png",  // fallback
-    apple: "/logotipo.png",     // ícone para iOS
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png", sizes: "32x32" },
+    ],
+    apple: "/apple-touch-icon.png",
   },
 };
 

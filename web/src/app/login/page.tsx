@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { signInWithEmailAndPassword, AuthErrorCodes, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword, AuthErrorCodes, GoogleAuthProvider, signInWithPopup, signInWithRedirect } from "firebase/auth";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
 
@@ -17,6 +17,14 @@ const mapAuthError = (code: string) => {
       return "Muitas tentativas. Aguarde um momento e tente novamente.";
     case AuthErrorCodes.OPERATION_NOT_ALLOWED:
       return "Login por e-mail e senha ainda nao esta habilitado no Firebase.";
+    case "auth/unauthorized-domain":
+      return "Dominio nao autorizado no Firebase Auth. Adicione seu dominio do Vercel em Authentication > Settings > Authorized domains.";
+    case "auth/popup-blocked":
+      return "Popup bloqueado pelo navegador. Permita popups para continuar.";
+    case "auth/popup-closed-by-user":
+      return "Popup do Google foi fechado antes de concluir.";
+    case "auth/operation-not-supported-in-this-environment":
+      return "Este navegador/ambiente bloqueou o popup. Tente outro navegador ou habilite popups.";
     default:
       return "Nao foi possivel iniciar a sessao agora.";
   }
@@ -45,7 +53,17 @@ const LoginForm = () => {
       }
     } catch (err) {
       const code = (err as { code?: string }).code ?? "";
-      setError(mapAuthError(code));
+      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+        try {
+          const provider = new GoogleAuthProvider();
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirErr) {
+          setError(mapAuthError((redirErr as { code?: string }).code ?? code));
+        }
+      } else {
+        setError(mapAuthError(code));
+      }
     } finally {
       setSubmitting(false);
     }

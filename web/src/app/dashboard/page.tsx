@@ -328,6 +328,13 @@ export default function DashboardPage() {
   };
 
   const handleRemoveParticipantRoom = (roomId: string) => {
+    const confirmed = window.confirm(
+      "Tem certeza que deseja excluir esta sala do seu Hall? Suas mensagens enviadas NÃO serão apagadas."
+    );
+    if (!confirmed) {
+      showFeedback("Ação cancelada. A sala permanece no seu Hall.", true);
+      return;
+    }
     const rooms = readJoinedRooms().filter((id) => id !== roomId);
     writeJoinedRooms(rooms);
     setParticipantRooms((current) => current.filter((entry) => entry.id !== roomId));
@@ -710,7 +717,7 @@ export default function DashboardPage() {
                     ) : (
                       <button
                         onClick={() => handleRemoveParticipantRoom(room.id)}
-                        className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
+                        className="inline-flex items-center justify-center rounded-full border border-rose-300 bg-white px-4 py-2 text-xs font-medium text-rose-600 transition hover:border-rose-400 hover:text-rose-700"
                       >
                         Excluir sala
                       </button>
@@ -772,6 +779,7 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
+
 
 
 

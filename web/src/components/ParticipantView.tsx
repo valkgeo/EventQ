@@ -361,11 +361,13 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
   };
 
   const handleLeaveRoom = () => {
-    const confirmation = window.confirm("Deseja sair desta sala? Suas perguntas permanecerao registradas.");
+    const confirmation = window.confirm("Deseja sair desta sala? Suas perguntas permanecerão registradas e você ainda verá este evento no Hall.");
     if (!confirmation) return;
-    const rooms = readJoinedRooms().filter((id) => id !== roomId);
-    writeJoinedRooms(rooms);
-    window.location.href = "/dashboard";
+    // Não remove a sala da lista local; apenas navega para o Hall/Dashboard.
+    // A remoção definitiva fica no botão "Excluir sala" no card do Hall.
+    if (typeof window !== "undefined") {
+      window.location.href = "/dashboard";
+    }
   };
 
   const canModerate = useMemo(() => {

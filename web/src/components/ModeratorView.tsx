@@ -18,6 +18,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { addModeratorEmail, getRoom, removeModeratorEmail } from "@/lib/rooms";
 import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 interface ModeratedQuestion {
   id: string;
@@ -49,8 +50,11 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
   const [addEmail, setAddEmail] = useState("");
   const [adding, setAdding] = useState(false);
   const [modFeedback, setModFeedback] = useState<string | null>(null);
-  const [logs, setLogs] = useState<Array<{ id: string; type: "added" | "removed"; actorEmail: string; targetEmail: string; createdAt?: Date }>>([]);
+  type ModerationLog = { id: string; type: "added" | "removed"; actorEmail: string; targetEmail: string; createdAt?: Date };
+  const [logs, setLogs] = useState<ModerationLog[]>([]);
   const { user } = useAuth();
+  const router = useRouter();
+  const [historyLimit, setHistoryLimit] = useState(5);
 
   // Initial load
   useEffect(() => {
@@ -83,16 +87,26 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
         allowModeratorDeleteRoom: (data.allowModeratorDeleteRoom as boolean | undefined) ?? true,
       });
 
-      const hist = (data.moderationHistory as any[] | undefined) ?? [];
+      type RawModerationEvent = {
+        type?: "added" | "removed";
+        actorEmail?: string | null;
+        targetEmail?: string | null;
+        createdAt?: number | { toDate?: () => Date } | null;
+      };
+      const hist = (data.moderationHistory as RawModerationEvent[] | undefined) ?? [];
       const entries = hist
-        .map((h, idx) => {
-          const raw = (h as any)?.createdAt;
-          const createdAt = raw && typeof raw.toDate === "function" ? raw.toDate() : typeof raw === "number" ? new Date(raw) : undefined;
+        .map((h, idx): ModerationLog => {
+          const raw = h?.createdAt;
+          let createdAt: Date | undefined;
+          if (typeof raw === "number") createdAt = new Date(raw);
+          else if (raw && typeof (raw as { toDate?: () => Date }).toDate === "function") {
+            createdAt = (raw as { toDate: () => Date }).toDate();
+          }
           return {
             id: String(idx),
             type: (h?.type as "added" | "removed") ?? "added",
-            actorEmail: (h?.actorEmail as string | undefined) ?? "",
-            targetEmail: (h?.targetEmail as string | undefined) ?? "",
+            actorEmail: (h?.actorEmail ?? "") || "",
+            targetEmail: (h?.targetEmail ?? "") || "",
             createdAt,
           };
         })
@@ -102,6 +116,17 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     });
     return () => unsub();
   }, [roomId]);
+
+  // If user loses moderator permission, redirect to participação
+  useEffect(() => {
+    const email = user?.email?.toLowerCase();
+    if (!email || !room) return;
+    const isOwner = room.organizationEmail?.toLowerCase?.() === email;
+    const isModerator = (room.allowedEmails ?? []).map((e) => e.toLowerCase()).includes(email);
+    if (!isOwner && !isModerator) {
+      router.replace(`/hall`);
+    }
+  }, [user?.email, room?.allowedEmails, room?.organizationEmail, roomId, router, room]);
 
   // Live questions
   useEffect(() => {
@@ -301,7 +326,7 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
 
         {room && (
           <section className="mb-6 grid gap-6 sm:grid-cols-2">
-            <div className="grid gap-3 rounded-3xl border border-slate-200 bg-white/90 p-4">
+            <div className="grid gap-3 rounded-3xl border border-slate-200 bg-white/90 p-4 self-start">
               <h3 className="text-sm font-semibold text-slate-900">Moderadores</h3>
               <div className="flex flex-wrap gap-2">
                 {room.allowedEmails
@@ -359,12 +384,29 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
             </div>
 
             <div className="grid gap-3 rounded-3xl border border-slate-200 bg-white/90 p-4">
-              <h3 className="text-sm font-semibold text-slate-900">Histórico</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">Histórico</h3>
+                {isOwner && logs.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await updateDoc(doc(db, "rooms", roomId), { moderationHistory: [], updatedAt: serverTimestamp() });
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-rose-200 hover:text-rose-500"
+                  >
+                    Limpar histórico
+                  </button>
+                )}
+              </div>
               {logs.length === 0 ? (
                 <p className="mt-0 text-xs text-slate-500">Sem eventos recentes.</p>
               ) : (
+                <>
                 <ul className="grid gap-2">
-                  {logs.map((l) => (
+                  {logs.slice(0, historyLimit).map((l) => (
                     <li key={l.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
                       <span>
                         <b>{l.actorEmail || "Alguém"}</b> {l.type === "added" ? "adicionou" : "removeu"} <b>{l.targetEmail}</b>
@@ -373,6 +415,17 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                     </li>
                   ))}
                 </ul>
+                {logs.length > historyLimit && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      onClick={() => setHistoryLimit((n) => n + 5)}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+                    >
+                      Carregar mais
+                    </button>
+                  </div>
+                )}
+                </>
               )}
             </div>
           </section>
@@ -381,3 +434,5 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     </ProtectedRoute>
   );
 };
+
+

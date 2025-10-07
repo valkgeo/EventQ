@@ -249,52 +249,7 @@ export default function DashboardPage() {
     };
   }, [managedRooms]);
 
-    function TrashButton({
-    room,
-    role,
-    isOwner,
-    removing,
-  }: {
-    room: Room;
-    role: "moderator" | "participant";
-    isOwner: boolean;
-    removing: boolean;
-  }) {
-    const isModerator = role === "moderator" || isOwner;
-    const canDelete = isOwner || (role === "moderator" && (room.allowModeratorDeleteRoom ?? true));
-
-    if (canDelete) {
-      return (
-        <button
-          onClick={() => handleDeleteRoom(room)}
-          disabled={removing}
-          className={`absolute right-4 top-4 z-10 rounded-full border border-rose-200 bg-rose-50 p-2
-            text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700
-            ${removing ? "cursor-wait opacity-70" : ""}`}
-          aria-label={`Excluir sala ${room.title}`}
-          type="button"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      );
-    }
-
-    if (role !== "moderator") {
-      return (
-        <button
-          onClick={() => handleRemoveParticipantRoom(room.id)}
-          className="absolute right-4 top-4 z-10 rounded-full border border-slate-200 bg-white p-2
-                    text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
-          aria-label={`Remover sala ${room.title} da sua lista`}
-          type="button"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-      );
-    }
-
-    return null;
-  }
+    
 
 
 
@@ -757,7 +712,7 @@ export default function DashboardPage() {
                         onClick={() => handleRemoveParticipantRoom(room.id)}
                         className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-500 transition hover:border-rose-200 hover:text-rose-500"
                       >
-                        Remover da lista
+                        Excluir sala
                       </button>
                     )}
                   </div>
@@ -817,5 +772,7 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
+
+
 
 

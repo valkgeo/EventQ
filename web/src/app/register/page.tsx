@@ -74,9 +74,9 @@ export default function RegisterPage() {
           </Link>
         </div>
         <div className="mb-8 flex flex-col gap-2 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Crie seu espaco EventQ</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Crie seu espaco EventsQ</h1>
           <p className="text-sm text-slate-600">
-            Cadastre a organizacao responsavel e um moderador principal para comecar agora mesmo.
+            Cadastre a organizacao responsavel e um moderador principal para comecar a usar no seu evento agora mesmo - 100% Gratuíto.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="grid gap-4">

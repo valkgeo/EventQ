@@ -1,0 +1,11 @@
+<div className="flex flex-wrap gap-3">
+            {displayRooms.length > 0 && (
+              <button
+                onClick={() => setShowCreateForm((current) => !current)}
+                className="inline-flex items-center justify-center rounded-full bg-violet-600 px-5 py-2 text-sm font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500"
+              >
+                {showCreateForm ? "Fechar criação" : "Criar sala"}
+              </button>
+            )}
+            <SignOutButton />
+          </div>

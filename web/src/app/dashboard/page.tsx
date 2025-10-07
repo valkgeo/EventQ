@@ -27,8 +27,7 @@ type RoomStats = {
 
 type CreateFormState = {
   title: string;
-  moderatorName: string;
-  moderatorEmail: string;
+  moderatorEmails: string; // comma-separated input
 };
 
 type DisplayRoom = {
@@ -41,8 +40,7 @@ const JOINED_ROOMS_KEY = "eventq-joined-rooms";
 
 const initialForm: CreateFormState = {
   title: "",
-  moderatorName: "",
-  moderatorEmail: "",
+  moderatorEmails: "",
 };
 
 const readJoinedRooms = () => {
@@ -60,6 +58,16 @@ const writeJoinedRooms = (rooms: string[]) => {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(JOINED_ROOMS_KEY, JSON.stringify(rooms));
 };
+
+const parseEmails = (raw: string) => {
+  return raw
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter((e) => e.length > 0);
+};
+
+const isValidEmail = (email: string) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 const shareLinks = (roomUrl: string, roomTitle: string) => ({
   whatsapp: `https://wa.me/?text=${encodeURIComponent(`Participe da sala ${roomTitle}: ${roomUrl}`)}`,
@@ -165,11 +173,12 @@ export default function DashboardPage() {
           title: data.title as string,
           organizationName: data.organizationName as string,
           organizationEmail: data.organizationEmail as string,
-          moderatorName: (data.moderatorName as string | null) ?? undefined,
-          moderatorEmail: (data.moderatorEmail as string | null) ?? undefined,
           allowedEmails: (data.allowedEmails as string[]) ?? [],
           createdAt: data.createdAt?.toDate?.(),
           status: data.status as string | undefined,
+          allowModeratorManageModerators:
+            (data.allowModeratorManageModerators as boolean | undefined) ?? true,
+          allowModeratorDeleteRoom: (data.allowModeratorDeleteRoom as boolean | undefined) ?? true,
         };
       });
       setManagedRooms(entries);
@@ -252,13 +261,14 @@ export default function DashboardPage() {
     removing: boolean;
   }) {
     const isModerator = role === "moderator" || isOwner;
+    const canDelete = isOwner || (role === "moderator" && (room.allowModeratorDeleteRoom ?? true));
 
-    if (isModerator) {
+    if (canDelete) {
       return (
         <button
           onClick={() => handleDeleteRoom(room)}
           disabled={removing}
-          className={`absolute right-4 bottom-4 z-10 rounded-full border border-rose-200 bg-rose-50 p-2
+          className={`absolute right-4 top-4 z-10 rounded-full border border-rose-200 bg-rose-50 p-2
             text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700
             ${removing ? "cursor-wait opacity-70" : ""}`}
           aria-label={`Excluir sala ${room.title}`}
@@ -269,17 +279,21 @@ export default function DashboardPage() {
       );
     }
 
-    return (
-      <button
-        onClick={() => handleRemoveParticipantRoom(room.id)}
-        className="absolute right-4 bottom-4 z-10 rounded-full border border-slate-200 bg-white p-2
-                  text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
-        aria-label={`Remover sala ${room.title} da sua lista`}
-        type="button"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-    );
+    if (role !== "moderator") {
+      return (
+        <button
+          onClick={() => handleRemoveParticipantRoom(room.id)}
+          className="absolute right-4 top-4 z-10 rounded-full border border-slate-200 bg-white p-2
+                    text-slate-500 shadow-sm transition hover:border-slate-300 hover:text-slate-900"
+          aria-label={`Remover sala ${room.title} da sua lista`}
+          type="button"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      );
+    }
+
+    return null;
   }
 
 
@@ -373,12 +387,12 @@ export default function DashboardPage() {
     clearFeedback();
 
     try {
+      const emails = parseEmails(form.moderatorEmails).filter(isValidEmail);
       const roomId = await createRoom({
         title: form.title,
         organizationName: organizationName || user.displayName || "Minha organização",
         organizationEmail: user.email,
-        moderatorName: form.moderatorName || undefined,
-        moderatorEmail: form.moderatorEmail || undefined,
+        moderatorEmails: emails,
         createdBy: user.uid,
       });
 
@@ -422,7 +436,7 @@ export default function DashboardPage() {
           Compartilhar
         </button>
         {isOpen && (
-          <div className="absolute right-0 z-30 mt-2 w-48 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+          <div className="absolute right-0 z-50 mt-2 w-48 overflow-visible rounded-2xl border border-slate-200 bg-white shadow-2xl">
             <button
               onClick={() => {
                 void handleCopy(roomId);
@@ -530,7 +544,7 @@ export default function DashboardPage() {
   };
 
   const roomCardClass =
-    "relative overflow-hidden rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl";
+    "relative overflow-visible rounded-3xl border border-slate-200 bg-white/90 shadow-xl backdrop-blur transition hover:-translate-y-1 hover:shadow-2xl";
 
   return (
     <ProtectedRoute>
@@ -552,6 +566,7 @@ export default function DashboardPage() {
                 {showCreateForm ? "Fechar criação" : "Criar sala"}
               </button>
             )}
+            <a href="/settings" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600">Perfil</a>
             <SignOutButton />
           </div>
         </header>
@@ -603,25 +618,15 @@ export default function DashboardPage() {
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Moderador principal</label>
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">E-mails dos moderadores (opcional)</label>
                 <input
-                  value={form.moderatorName}
-                  onChange={(event) => setForm((prev) => ({ ...prev, moderatorName: event.target.value }))}
-                  placeholder="Nome completo"
+                  value={form.moderatorEmails}
+                  onChange={(event) => setForm((prev) => ({ ...prev, moderatorEmails: event.target.value }))}
+                  placeholder="ex.: fulano@gmail.com, cicrano@hotmail.com"
                   className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
                 />
-              </div>
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">E-mail do moderador</label>
-                <input
-                  type="email"
-                  value={form.moderatorEmail}
-                  onChange={(event) => setForm((prev) => ({ ...prev, moderatorEmail: event.target.value }))}
-                  placeholder="moderador@evento.com"
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
-                />
-                <p className="text-xs text-slate-500">Opcional. Adicione para conceder acesso direto à moderação.</p>
+                <p className="text-xs text-slate-500">Separe múltiplos e-mails por vírgula. Quem tiver conta verá a sala automaticamente.</p>
               </div>
               <div className="sm:col-span-2 flex justify-end">
                 <button
@@ -642,15 +647,9 @@ export default function DashboardPage() {
               const roomUrl = `${origin}/rooms/${room.id}/participate`;
               const stats = roomStats[room.id] ?? { total: 0, accepted: 0, pending: 0 };
               const isModerator = role === "moderator";
+              const canDelete = isOwner || (role === "moderator" && (room.allowModeratorDeleteRoom ?? true));
               return (
                 <article key={room.id} className={roomCardClass}>
-                <TrashButton
-                  room={room}
-                  role={role}
-                  isOwner={isOwner}
-                  removing={removingRoomId === room.id}
-                />
-
                 <div className="bg-gradient-to-r from-violet-500 to-indigo-500 px-6 py-5 text-white">
                   <div className="flex items-start justify-between">
                     <div>
@@ -659,13 +658,28 @@ export default function DashboardPage() {
                         {room.organizationName}
                       </p>
                     </div>
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-medium ${
-                        isModerator ? "bg-emerald-400 text-emerald-900" : "bg-white/20 text-white"
-                      }`}
-                    >
-                      {isModerator ? "Moderador" : "Participante"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-medium ${
+                          isModerator ? "bg-emerald-400 text-emerald-900" : "bg-white/20 text-white"
+                        }`}
+                      >
+                        {isModerator ? "Moderador" : "Participante"}
+                      </span>
+                      {canDelete && (
+                        <button
+                          onClick={() => handleDeleteRoom(room)}
+                          disabled={removingRoomId === room.id}
+                          className={`rounded-full border border-rose-200 bg-rose-50 p-2 text-rose-600 shadow-sm transition hover:border-rose-300 hover:text-rose-700 ${
+                            removingRoomId === room.id ? "cursor-wait opacity-70" : ""
+                          }`}
+                          aria-label={`Excluir sala ${room.title}`}
+                          type="button"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -803,3 +817,5 @@ export default function DashboardPage() {
     </ProtectedRoute>
   );
 }
+
+

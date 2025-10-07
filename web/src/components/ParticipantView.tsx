@@ -618,7 +618,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       <section className="grid gap-4 rounded-3xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur sm:grid-cols-[180px_1fr]">
         <div className="flex flex-col items-center gap-3">
           <QRCode value={shareUrl} size={140} bgColor="transparent" fgColor="#4338ca" />
-          <p className="text-xs text-slate-500">Compartilhe este QR Code com os participantes.</p>
+          <p className="text-xs text-slate-500">Compartilhe esta sala com outros participantes.</p>
         </div>
         <div className="flex flex-col gap-3">
           <p className="text-sm text-slate-600">Link direto: <span className="font-medium text-violet-600">{shareUrl}</span></p>

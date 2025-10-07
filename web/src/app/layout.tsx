@@ -34,11 +34,17 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
+      <head>
+        <meta
+          name="google-site-verification"
+          content="Pt0UY0yV3pIocMWh9yv5Ejd6fM0i57ihGVcq3_kuhXw"
+        />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased text-slate-900`}
       >
         <AuthProvider>{children}</AuthProvider>
-        <Analytics /> 
+        <Analytics />
       </body>
     </html>
   );

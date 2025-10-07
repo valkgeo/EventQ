@@ -11,6 +11,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   onSnapshot,
   query,
   serverTimestamp,
@@ -291,6 +292,27 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
     }
     return `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/rooms/${roomId}/participate`;
   }, [roomId]);
+
+  // Prefill participant name from profile when logged in
+  useEffect(() => {
+    const prefill = async () => {
+      if (!user?.uid) return;
+      try {
+        const profileRef = doc(db, "users", user.uid);
+        const snap = await getDoc(profileRef);
+        const profileName = snap.exists() ? ((snap.data() as { displayName?: string }).displayName ?? "") : "";
+        const name = profileName || user.displayName || "";
+        if (name && participantName.trim().length === 0) {
+          setParticipantName(name);
+        }
+      } catch {
+        if (user.displayName && participantName.trim().length === 0) {
+          setParticipantName(user.displayName);
+        }
+      }
+    };
+    void prefill();
+  }, [user?.uid]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

@@ -116,7 +116,7 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
         <p className="mt-6 text-center text-xs text-slate-500">
-          Ainda nao tem acesso? <Link href="/register" className="font-medium text-violet-600 underline">Solicite cadastro</Link>.
+          Ainda nao tem acesso? <Link href="/register" className="font-medium text-violet-600 underline">Realizar cadastro</Link>.
         </p>
       </div>
     </div>

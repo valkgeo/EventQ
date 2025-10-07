@@ -312,7 +312,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
       }
     };
     void prefill();
-  }, [user?.uid]);
+  }, [user?.uid, user?.displayName, participantName]);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();

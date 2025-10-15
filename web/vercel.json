@@ -1,0 +1,19 @@
+{
+  "redirects": [
+    {
+      "source": "http://eventsq.org/:path*",
+      "destination": "https://eventsq.org/:path*",
+      "permanent": true
+    },
+    {
+      "source": "https://www.eventsq.org/:path*",
+      "destination": "https://eventsq.org/:path*",
+      "permanent": true
+    },
+    {
+      "source": "http://www.eventsq.org/:path*",
+      "destination": "https://eventsq.org/:path*",
+      "permanent": true
+    }
+  ]
+}

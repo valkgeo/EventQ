@@ -19,11 +19,12 @@ export const metadata: Metadata = {
   description:
     "Facilite a interação nos seus eventos: receba perguntas via QR Code, modere com praticidade e mantenha o público conectado, totalmente gratuito.",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icon.png", type: "image/png", sizes: "32x32" },
-    ],
-    apple: "/apple-touch-icon.png",
+    icon: "/icon.png",
+    shortcut: "/favicon.ico",
+    apple: "/icon.png",
+  },
+  alternates: {
+    canonical: "https://eventsq.org/",
   },
 };
 
@@ -35,10 +36,13 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <head>
+        {/* Verificação do Google Search Console */}
         <meta
           name="google-site-verification"
           content="Pt0UY0yV3pIocMWh9yv5Ejd6fM0i57ihGVcq3_kuhXw"
         />
+        {/* Tag canônica redundante (reforça para bots antigos) */}
+        <link rel="canonical" href="https://eventsq.org/" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased text-slate-900`}

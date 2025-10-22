@@ -73,23 +73,25 @@ export default function RegisterPage() {
     await setDoc(doc(db, "users", uid), toSave, { merge: true });
   };
 
-  // Verifica se o email é só Google (sem password)
-  const guardIfGoogleOnly = async (emailToCheck: string): Promise<boolean> => {
+  // Pré-cheque: bloqueia cadastro se o e-mail já existe (senha e/ou Google)
+  const precheckExistingAccount = async (emailToCheck: string): Promise<boolean> => {
     try {
       const methods = await fetchSignInMethodsForEmail(auth, emailToCheck);
       const hasGoogle = methods.includes("google.com");
       const hasPassword = methods.includes("password");
 
-      if (hasGoogle && !hasPassword) {
-        setError("Este e-mail já está cadastrado via Google. Use “Entrar com Google” na página de login.");
+      if (hasPassword) {
+        setError("Este e-mail já está cadastrado. Use “Entrar” para acessar sua conta.");
         setInfo(null);
-        return true; // bloquear criação por senha
+        return true;
       }
-      if (hasGoogle && hasPassword) {
-        setInfo("Atenção: este e-mail já possui cadastro. Se preferir, você também pode entrar usando o Google.");
+      if (hasGoogle) {
+        setError("Este e-mail já está cadastrado via Google. Use “Entrar com Google”.");
+        setInfo(null);
+        return true;
       }
     } catch {
-      // se a checagem falhar, não bloqueie o fluxo
+      // se a checagem falhar, não bloqueie; deixa o Firebase validar adiante
     }
     return false;
   };
@@ -106,8 +108,11 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      const block = await guardIfGoogleOnly(email);
-      if (block) return;
+      const block = await precheckExistingAccount(email);
+      if (block) {
+        setSubmitting(false);
+        return;
+      }
 
       const credential = await createUserWithEmailAndPassword(auth, email, password);
 
@@ -200,7 +205,7 @@ export default function RegisterPage() {
         <div className="mb-8 flex flex-col gap-2 text-center">
           <h1 className="text-2xl font-semibold text-slate-900">Crie sua conta no EventsQ</h1>
           <p className="text-sm text-slate-600">
-            Você pode informar o evento agora ou depois no painel. O cadastro é 100% gratuito.
+            Você pode informar o evento agora ou depois no painel. <br>O cadastro é 100% gratuito.</br>
           </p>
         </div>
 
@@ -248,8 +253,10 @@ export default function RegisterPage() {
                 if (email) {
                   try {
                     const methods = await fetchSignInMethodsForEmail(auth, email);
-                    if (methods.includes("google.com") && !methods.includes("password")) {
-                      setInfo("Este e-mail já está cadastrado via Google. Use ‘Entrar com Google’ na página de login.");
+                    if (methods.includes("password")) {
+                      setInfo("Este e-mail já possui cadastro por senha. Vá para a página de login.");
+                    } else if (methods.includes("google.com")) {
+                      setInfo("Este e-mail já está cadastrado via Google. Use “Entrar com Google”.");
                     } else {
                       setInfo(null);
                     }

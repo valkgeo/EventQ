@@ -12,8 +12,21 @@ import {
   signInWithRedirect,
   fetchSignInMethodsForEmail,
 } from "firebase/auth";
+import type { FirebaseError } from "firebase/app";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
+
+/* ------------------------- helpers de tipos/erros ------------------------- */
+
+type UserProfilePayload = {
+  displayName: string;
+  email: string;
+  organizationName?: string;
+};
+
+function isFirebaseError(e: unknown): e is FirebaseError {
+  return typeof e === "object" && e !== null && "code" in e;
+}
 
 const mapRegisterError = (code: string) => {
   switch (code) {
@@ -36,6 +49,8 @@ const mapRegisterError = (code: string) => {
   }
 };
 
+/* ---------------------------------- page ---------------------------------- */
+
 export default function RegisterPage() {
   const router = useRouter();
   const [organizationName, setOrganizationName] = useState("");
@@ -47,21 +62,19 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  // Helper: cria/merge perfil no Firestore (salva org só se existir)
-  const upsertUserDoc = async (uid: string, payload: Record<string, any>) => {
-    const toSave: Record<string, any> = {
+  // cria/merge perfil no Firestore (salva org só se existir)
+  const upsertUserDoc = async (uid: string, payload: UserProfilePayload) => {
+    const toSave: UserProfilePayload & { createdAt: ReturnType<typeof serverTimestamp> } = {
       displayName: payload.displayName,
       email: payload.email,
       createdAt: serverTimestamp(),
+      ...(payload.organizationName?.trim() ? { organizationName: payload.organizationName.trim() } : {}),
     };
-    if (payload.organizationName?.trim()) {
-      toSave.organizationName = payload.organizationName.trim();
-    }
     await setDoc(doc(db, "users", uid), toSave, { merge: true });
   };
 
-  // Verifica antes se o e-mail já está vinculado ao Google
-  const guardIfGoogleOnly = async (emailToCheck: string) => {
+  // Verifica se o email é só Google (sem password)
+  const guardIfGoogleOnly = async (emailToCheck: string): Promise<boolean> => {
     try {
       const methods = await fetchSignInMethodsForEmail(auth, emailToCheck);
       const hasGoogle = methods.includes("google.com");
@@ -72,12 +85,11 @@ export default function RegisterPage() {
         setInfo(null);
         return true; // bloquear criação por senha
       }
-
       if (hasGoogle && hasPassword) {
         setInfo("Atenção: este e-mail já possui cadastro. Se preferir, você também pode entrar usando o Google.");
       }
     } catch {
-      // se falhar a checagem, não bloqueie; apenas siga o fluxo
+      // se a checagem falhar, não bloqueie o fluxo
     }
     return false;
   };
@@ -94,13 +106,11 @@ export default function RegisterPage() {
 
     setSubmitting(true);
     try {
-      // Bloqueia criação por senha se a conta for somente Google
       const block = await guardIfGoogleOnly(email);
       if (block) return;
 
       const credential = await createUserWithEmailAndPassword(auth, email, password);
 
-      // Se o usuário não informou "Nome de Usuário", usamos o email local-part
       const finalDisplayName =
         moderatorName.trim() || (email.includes("@") ? email.split("@")[0] : "Usuário");
 
@@ -113,8 +123,8 @@ export default function RegisterPage() {
       });
 
       router.push("/dashboard");
-    } catch (err) {
-      const code = (err as { code?: string }).code ?? "";
+    } catch (err: unknown) {
+      const code = isFirebaseError(err) ? err.code : "";
       setError(mapRegisterError(code));
     } finally {
       setSubmitting(false);
@@ -147,25 +157,22 @@ export default function RegisterPage() {
       }
 
       router.push("/dashboard");
-    } catch (err) {
-      const code = (err as { code?: string }).code ?? "";
+    } catch (err: unknown) {
+      const code = isFirebaseError(err) ? err.code : "";
 
       // 1) Popup fechado pelo usuário
       if (code === "auth/popup-closed-by-user") {
         setError("Popup do Google foi fechado antes de concluir.");
-        return; // finally cuidará de limpar o loading
+        return; // finally limpa o loading
       }
 
-      // 2) Popup bloqueado / ambiente sem suporte (⇐ AQUI estava o parêntese extra)
-      if (
-        code === "auth/popup-blocked" ||
-        code === "auth/operation-not-supported-in-this-environment"
-      ) {
+      // 2) Popup bloqueado / ambiente sem suporte → fallback redirect
+      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
         setSubmitting(false); // evita “Criando…” eterno
         try {
           await signInWithRedirect(auth, provider);
-        } catch (redirErr) {
-          const rcode = (redirErr as { code?: string }).code ?? "";
+        } catch (redirErr: unknown) {
+          const rcode = isFirebaseError(redirErr) ? redirErr.code : "";
           setError(mapRegisterError(rcode));
         }
         return;
@@ -197,7 +204,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-4">
+        <form onSubmit={handleSubmit} className="grid gap-4" aria-busy={submitting}>
           {/* Evento/Organização — OPCIONAL */}
           <div className="flex flex-col gap-2">
             <label htmlFor="organization" className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">
@@ -221,7 +228,7 @@ export default function RegisterPage() {
               id="moderator"
               value={moderatorName}
               onChange={(e) => setModeratorName(e.target.value)}
-              placeholder="Seu nome completo ou apelido"
+              placeholder="Seu nome completo"
               className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
           </div>
@@ -317,9 +324,10 @@ export default function RegisterPage() {
             type="button"
             onClick={() => void handleRegisterWithGoogle()}
             disabled={submitting}
+            aria-busy={submitting}
             className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-sm font-medium text-slate-700 shadow-sm transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" className="h-4 w-4" aria-hidden="true">
               <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.651 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/>
               <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 16.108 18.961 14 24 14c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z"/>
               <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.197l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.62-3.319-11.283-7.938l-6.49 5.006C9.521 39.556 16.227 44 24 44z"/>

@@ -496,7 +496,7 @@ export const ParticipantView = ({ roomId }: { roomId: string }) => {
               placeholder="Qual e a sua pergunta?"
               className="resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
             />
-            <p className="text-xs text-slate-500">O EventQ filtra palavroes automaticamente antes de enviar.</p>
+            <p className="text-xs text-slate-500">O EventsQ filtra palavroes automaticamente antes de enviar.</p>
           </div>
 
           <label className="inline-flex cursor-pointer items-center gap-3 text-sm text-slate-600">

@@ -205,7 +205,7 @@ export default function RegisterPage() {
         <div className="mb-8 flex flex-col gap-2 text-center">
           <h1 className="text-2xl font-semibold text-slate-900">Crie sua conta no EventsQ</h1>
           <p className="text-sm text-slate-600">
-            Você pode informar o evento agora ou depois no painel. <br>O cadastro é 100% gratuito.</br>
+            Você pode informar o evento agora ou depois no painel. O cadastro é 100% gratuito.
           </p>
         </div>
 

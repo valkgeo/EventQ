@@ -11,6 +11,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   fetchSignInMethodsForEmail,
+  getAdditionalUserInfo,
+  signOut,
 } from "firebase/auth";
 import type { FirebaseError } from "firebase/app";
 import { doc, serverTimestamp, setDoc } from "firebase/firestore";
@@ -44,6 +46,8 @@ const mapRegisterError = (code: string) => {
       return "Popup do Google foi fechado antes de concluir.";
     case "auth/operation-not-supported-in-this-environment":
       return "Este navegador/ambiente bloqueou o popup. Tente outro navegador ou habilite popups.";
+    case "auth/account-exists-with-different-credential":
+      return "Já existe uma conta para este e-mail com outro método de login.";
     default:
       return "Não foi possível concluir o cadastro.";
   }
@@ -62,6 +66,8 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  const normalizeEmail = (v: string) => v.trim().toLowerCase();
+
   // cria/merge perfil no Firestore (salva org só se existir)
   const upsertUserDoc = async (uid: string, payload: UserProfilePayload) => {
     const toSave: UserProfilePayload & { createdAt: ReturnType<typeof serverTimestamp> } = {
@@ -74,7 +80,9 @@ export default function RegisterPage() {
   };
 
   // Pré-cheque: bloqueia cadastro se o e-mail já existe (senha e/ou Google)
-  const precheckExistingAccount = async (emailToCheck: string): Promise<boolean> => {
+  const precheckExistingAccount = async (rawEmail: string): Promise<boolean> => {
+    const emailToCheck = normalizeEmail(rawEmail);
+    if (!emailToCheck) return false;
     try {
       const methods = await fetchSignInMethodsForEmail(auth, emailToCheck);
       const hasGoogle = methods.includes("google.com");
@@ -106,31 +114,49 @@ export default function RegisterPage() {
       return;
     }
 
+    const emailNorm = normalizeEmail(email);
+
     setSubmitting(true);
     try {
-      const block = await precheckExistingAccount(email);
+      const block = await precheckExistingAccount(emailNorm);
       if (block) {
         setSubmitting(false);
         return;
       }
 
-      const credential = await createUserWithEmailAndPassword(auth, email, password);
+      const credential = await createUserWithEmailAndPassword(auth, emailNorm, password);
 
       const finalDisplayName =
-        moderatorName.trim() || (email.includes("@") ? email.split("@")[0] : "Usuário");
+        moderatorName.trim() || (emailNorm.includes("@") ? emailNorm.split("@")[0] : "Usuário");
 
       await updateProfile(credential.user, { displayName: finalDisplayName });
 
       await upsertUserDoc(credential.user.uid, {
         organizationName, // opcional
         displayName: finalDisplayName,
-        email,
+        email: emailNorm,
       });
 
       router.push("/dashboard");
     } catch (err: unknown) {
       const code = isFirebaseError(err) ? err.code : "";
-      setError(mapRegisterError(code));
+
+      if (code === AuthErrorCodes.EMAIL_EXISTS) {
+        try {
+          const methods = await fetchSignInMethodsForEmail(auth, normalizeEmail(email));
+          if (methods.includes("password")) {
+            setError("Este e-mail já está cadastrado. Use “Entrar” para acessar sua conta.");
+          } else if (methods.includes("google.com")) {
+            setError("Este e-mail já está cadastrado via Google. Use “Entrar com Google”.");
+          } else {
+            setError(mapRegisterError(code));
+          }
+        } catch {
+          setError(mapRegisterError(code));
+        }
+      } else {
+        setError(mapRegisterError(code));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -143,10 +169,22 @@ export default function RegisterPage() {
     setSubmitting(true);
 
     const provider = new GoogleAuthProvider();
+    // opcional: força escolher conta
+    provider.setCustomParameters({ prompt: "select_account" });
 
     try {
       const cred = await signInWithPopup(auth, provider);
 
+      // 🚫 Não permitir "login" se NÃO for um novo usuário:
+      const addInfo = getAdditionalUserInfo(cred);
+      if (addInfo && !addInfo.isNewUser) {
+        // desfaz login imediato
+        await signOut(auth);
+        setError("Este e-mail já está cadastrado via Google. Use “Entrar com Google”.");
+        return; // não cria documento nem redireciona
+      }
+
+      // Segue fluxo normal de novo usuário
       const user = cred.user;
       if (user?.uid) {
         const finalDisplayName =
@@ -157,7 +195,7 @@ export default function RegisterPage() {
         await upsertUserDoc(user.uid, {
           organizationName, // opcional
           displayName: finalDisplayName,
-          email: user.email ?? "",
+          email: normalizeEmail(user.email ?? ""),
         });
       }
 
@@ -165,13 +203,19 @@ export default function RegisterPage() {
     } catch (err: unknown) {
       const code = isFirebaseError(err) ? err.code : "";
 
-      // 1) Popup fechado pelo usuário
-      if (code === "auth/popup-closed-by-user") {
-        setError("Popup do Google foi fechado antes de concluir.");
-        return; // finally limpa o loading
+      // Conta já existe com outro método (ex.: senha) → bloqueia
+      if (code === "auth/account-exists-with-different-credential" || code === AuthErrorCodes.EMAIL_EXISTS) {
+        setError("Este e-mail já está cadastrado. Use a página de login para entrar.");
+        return;
       }
 
-      // 2) Popup bloqueado / ambiente sem suporte → fallback redirect
+      // Popup fechado pelo usuário
+      if (code === "auth/popup-closed-by-user") {
+        setError("Popup do Google foi fechado antes de concluir.");
+        return;
+      }
+
+      // Popup bloqueado / ambiente sem suporte → fallback redirect (opcional; se preferir, apenas mostre erro)
       if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
         setSubmitting(false); // evita “Criando…” eterno
         try {
@@ -183,7 +227,6 @@ export default function RegisterPage() {
         return;
       }
 
-      // 3) Outros erros
       setError(mapRegisterError(code));
     } finally {
       setSubmitting(false);
@@ -250,9 +293,10 @@ export default function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               onBlur={async () => {
-                if (email) {
+                const v = normalizeEmail(email);
+                if (v) {
                   try {
-                    const methods = await fetchSignInMethodsForEmail(auth, email);
+                    const methods = await fetchSignInMethodsForEmail(auth, v);
                     if (methods.includes("password")) {
                       setInfo("Este e-mail já possui cadastro por senha. Vá para a página de login.");
                     } else if (methods.includes("google.com")) {

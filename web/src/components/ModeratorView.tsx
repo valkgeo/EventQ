@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -54,7 +54,10 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
   const [logs, setLogs] = useState<ModerationLog[]>([]);
   const { user } = useAuth();
   const router = useRouter();
+
+  // limites de histórico e moderadores
   const [historyLimit, setHistoryLimit] = useState(5);
+  const [moderatorLimit, setModeratorLimit] = useState(5);
 
   // Initial load
   useEffect(() => {
@@ -151,8 +154,18 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     return () => unsub();
   }, [roomId]);
 
-  const filteredQuestions = useMemo(() => (filter === "all" ? questions : questions.filter((q) => q.status === filter)), [filter, questions]);
-  const counts = useMemo(() => questions.reduce((acc, q) => ((acc.all++, acc[q.status]++), acc), { all: 0, pending: 0, accepted: 0, rejected: 0 } as Record<FilterOption | "all", number>), [questions]);
+  const filteredQuestions = useMemo(
+    () => (filter === "all" ? questions : questions.filter((q) => q.status === filter)),
+    [filter, questions]
+  );
+  const counts = useMemo(
+    () =>
+      questions.reduce(
+        (acc, q) => ((acc.all++, acc[q.status]++), acc),
+        { all: 0, pending: 0, accepted: 0, rejected: 0 } as Record<FilterOption | "all", number>
+      ),
+    [questions]
+  );
 
   const handleUpdateStatus = async (questionId: string, status: "pending" | "accepted" | "rejected") => {
     setProcessing(true);
@@ -232,7 +245,9 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     setProcessing(true);
     try {
       const batch = writeBatch(db);
-      target.forEach((q) => batch.update(doc(db, "rooms", roomId, "questions", q.id), { status, updatedAt: serverTimestamp() }));
+      target.forEach((q) =>
+        batch.update(doc(db, "rooms", roomId, "questions", q.id), { status, updatedAt: serverTimestamp() })
+      );
       await batch.commit();
     } finally {
       setProcessing(false);
@@ -251,6 +266,15 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
       setProcessing(false);
     }
   };
+
+  // lista derivada de moderadores (exclui o e-mail da organização)
+  const moderators = useMemo(
+    () =>
+      (room?.allowedEmails ?? []).filter(
+        (e) => e.toLowerCase() !== room?.organizationEmail?.toLowerCase()
+      ),
+    [room?.allowedEmails, room?.organizationEmail]
+  );
 
   if (loadingRoom) {
     return (
@@ -277,21 +301,54 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
           <div className="flex flex-col gap-2">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Moderando</p>
             <h1 className="text-2xl font-semibold text-slate-900">{room.title}</h1>
-            <p className="text-sm text-slate-600">Organizacao {room.organizationName} - {counts.pending} perguntas pendentes</p>
+            <p className="text-sm text-slate-600">
+              Organizacao {room.organizationName} - {counts.pending} perguntas pendentes
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link href="/hall" aria-label="Voltar ao hall" className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-violet-200 hover:text-violet-600" title="Voltar ao hall">
+            <Link
+              href="/hall"
+              aria-label="Voltar ao hall"
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white p-2 text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+              title="Voltar ao hall"
+            >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <button onClick={() => void handleBulkStatus("accepted")} disabled={processing || counts.pending === 0} className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60">Aprovar todas</button>
-            <button onClick={() => void handleBulkStatus("rejected")} disabled={processing || counts.pending === 0} className="inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60">Rejeitar todas</button>
-            <button onClick={handleClear} disabled={processing || counts.all === 0} className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-60">Limpar historico</button>
+            <button
+              onClick={() => void handleBulkStatus("accepted")}
+              disabled={processing || counts.pending === 0}
+              className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Aprovar todas
+            </button>
+            <button
+              onClick={() => void handleBulkStatus("rejected")}
+              disabled={processing || counts.pending === 0}
+              className="inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Rejeitar todas
+            </button>
+            <button
+              onClick={handleClear}
+              disabled={processing || counts.all === 0}
+              className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Limpar historico
+            </button>
           </div>
         </header>
 
         <section className="flex flex-wrap gap-2">
           {(Object.keys(filterLabels) as FilterOption[]).map((option) => (
-            <button key={option} onClick={() => setFilter(option)} className={`rounded-full border px-4 py-2 text-xs font-medium transition ${filter === option ? "border-violet-200 bg-violet-50 text-violet-600" : "border-slate-200 bg-white text-slate-600 hover:border-violet-200 hover:text-violet-600"}`}>
+            <button
+              key={option}
+              onClick={() => setFilter(option)}
+              className={`rounded-full border px-4 py-2 text-xs font-medium transition ${
+                filter === option
+                  ? "border-violet-200 bg-violet-50 text-violet-600"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-violet-200 hover:text-violet-600"
+              }`}
+            >
               {filterLabels[option]} ({counts[option] ?? 0})
             </button>
           ))}
@@ -299,25 +356,75 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
 
         <section className="grid gap-4 pb-16">
           {filteredQuestions.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-sm text-slate-500">Nenhuma pergunta nesta categoria por enquanto.</div>
+            <div className="rounded-3xl border border-dashed border-slate-200 bg-white/70 p-8 text-sm text-slate-500">
+              Nenhuma pergunta nesta categoria por enquanto.
+            </div>
           ) : (
             filteredQuestions.map((question) => (
-              <article key={question.id} className={`flex flex-col gap-4 rounded-3xl border p-6 shadow-lg backdrop-blur ${question.highlighted ? "border-violet-200 bg-violet-50/80" : "border-slate-200 bg-white/90"}`}>
+              <article
+                key={question.id}
+                className={`flex flex-col gap-4 rounded-3xl border p-6 shadow-lg backdrop-blur ${
+                  question.highlighted ? "border-violet-200 bg-violet-50/80" : "border-slate-200 bg-white/90"
+                }`}
+              >
                 <div className="flex flex-col gap-2">
                   <p className="text-sm text-slate-900">{question.text}</p>
-                  <p className="text-xs text-slate-500">{question.isAnonymous ? "Anonimo" : question.participantName || "Participante"}{question.createdAt && ` - ${question.createdAt.toLocaleTimeString()}`}</p>
+                  <p className="text-xs text-slate-500">
+                    {question.isAnonymous ? "Anonimo" : question.participantName || "Participante"}
+                    {question.createdAt && ` - ${question.createdAt.toLocaleTimeString()}`}
+                  </p>
                   {question.likeCount !== undefined && question.likeCount > 0 && (
-                    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-medium text-violet-600">Destaque com {question.likeCount} {question.likeCount === 1 ? "curtida" : "curtidas"}</span>
+                    <span className="inline-flex w-fit items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-1 text-xs font-medium text-violet-600">
+                      Destaque com {question.likeCount} {question.likeCount === 1 ? "curtida" : "curtidas"}
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-wrap gap-3">
-                  <span className={`inline-flex items-center rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${question.status === "accepted" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : question.status === "rejected" ? "border-rose-200 bg-rose-50 text-rose-600" : "border-slate-200 bg-slate-50 text-slate-500"}`}>{question.status === "accepted" ? "Aceita" : question.status === "rejected" ? "Recusada" : "Pendente"}</span>
-                  <button onClick={() => void handleUpdateStatus(question.id, "accepted")} disabled={processing || question.status === "accepted"} className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">Aprovar</button>
-                  <button onClick={() => void handleUpdateStatus(question.id, "rejected")} disabled={processing || question.status === "rejected"} className="inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-50">Rejeitar</button>
+                  <span
+                    className={`inline-flex items-center rounded-full border px-3 py-1 text-xs uppercase tracking-[0.2em] ${
+                      question.status === "accepted"
+                        ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                        : question.status === "rejected"
+                        ? "border-rose-200 bg-rose-50 text-rose-600"
+                        : "border-slate-200 bg-slate-50 text-slate-500"
+                    }`}
+                  >
+                    {question.status === "accepted" ? "Aceita" : question.status === "rejected" ? "Recusada" : "Pendente"}
+                  </span>
+                  <button
+                    onClick={() => void handleUpdateStatus(question.id, "accepted")}
+                    disabled={processing || question.status === "accepted"}
+                    className="inline-flex items-center justify-center rounded-full bg-emerald-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Aprovar
+                  </button>
+                  <button
+                    onClick={() => void handleUpdateStatus(question.id, "rejected")}
+                    disabled={processing || question.status === "rejected"}
+                    className="inline-flex items-center justify-center rounded-full bg-rose-500 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-rose-500/20 transition hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Rejeitar
+                  </button>
                   {question.status !== "pending" && (
-                    <button onClick={() => void handleUpdateStatus(question.id, "pending")} disabled={processing} className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-50">Voltar para pendente</button>
+                    <button
+                      onClick={() => void handleUpdateStatus(question.id, "pending")}
+                      disabled={processing}
+                      className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Voltar para pendente
+                    </button>
                   )}
-                  <button onClick={() => void handleToggleHighlight(question)} disabled={processing} className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-medium transition ${question.highlighted ? "border border-violet-300 bg-white text-violet-600 hover:border-violet-400" : "bg-violet-600 text-white shadow-lg shadow-violet-600/20 hover:bg-violet-500"} disabled:cursor-not-allowed disabled:opacity-60`}>{question.highlighted ? "Remover destaque" : "Destacar"}</button>
+                  <button
+                    onClick={() => void handleToggleHighlight(question)}
+                    disabled={processing}
+                    className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-xs font-medium transition ${
+                      question.highlighted
+                        ? "border border-violet-300 bg-white text-violet-600 hover:border-violet-400"
+                        : "bg-violet-600 text-white shadow-lg shadow-violet-600/20 hover:bg-violet-500"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {question.highlighted ? "Remover destaque" : "Destacar"}
+                  </button>
                 </div>
               </article>
             ))
@@ -326,31 +433,66 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
 
         {room && (
           <section className="mb-6 grid gap-6 sm:grid-cols-2">
+            {/* Moderadores */}
             <div className="grid gap-3 rounded-3xl border border-slate-200 bg-white/90 p-4 self-start">
               <h3 className="text-sm font-semibold text-slate-900">Moderadores</h3>
+
               <div className="flex flex-wrap gap-2">
-                {room.allowedEmails
-                  ?.filter((e) => e.toLowerCase() !== room.organizationEmail.toLowerCase())
-                  .map((email) => (
-                    <span key={email} className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700">
-                      {email}
-                      {canManageModerators && (
-                        <button onClick={() => handleRemoveModerator(email)} disabled={processing} className="rounded-full border border-violet-200 bg-white/80 px-2 py-0.5 text-[10px] text-violet-700 transition hover:border-violet-300 hover:text-violet-900" title="Remover moderador">
-                          remover
-                        </button>
-                      )}
-                    </span>
-                  ))}
-                {room.allowedEmails?.filter((e) => e.toLowerCase() !== room.organizationEmail.toLowerCase()).length === 0 && (
+                {moderators.slice(0, moderatorLimit).map((email) => (
+                  <span
+                    key={email}
+                    className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700"
+                  >
+                    {email}
+                    {canManageModerators && (
+                      <button
+                        onClick={() => handleRemoveModerator(email)}
+                        disabled={processing}
+                        className="rounded-full border border-violet-200 bg-white/80 px-2 py-0.5 text-[10px] text-violet-700 transition hover:border-violet-300 hover:text-violet-900"
+                        title="Remover moderador"
+                      >
+                        remover
+                      </button>
+                    )}
+                  </span>
+                ))}
+
+                {moderators.length === 0 && (
                   <span className="text-xs text-slate-500">Nenhum moderador adicionado ainda.</span>
                 )}
               </div>
-              {canManageModerators && (
-                <div className="flex flex-wrap gap-2">
-                  <input type="email" placeholder="email-do-moderador@exemplo.com" value={addEmail} onChange={(e) => setAddEmail(e.target.value)} className="min-w-[240px] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100" />
-                  <button onClick={handleAddModerator} disabled={adding} className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60">Adicionar moderador</button>
+
+              {/* Ver mais */}
+              {moderators.length > moderatorLimit && (
+                <div className="mt-2 flex justify-end">
+                  <button
+                    onClick={() => setModeratorLimit((n) => n + 5)}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+                  >
+                    Ver mais
+                  </button>
                 </div>
               )}
+
+              {canManageModerators && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <input
+                    type="email"
+                    placeholder="email-do-moderador@exemplo.com"
+                    value={addEmail}
+                    onChange={(e) => setAddEmail(e.target.value)}
+                    className="min-w-[240px] flex-1 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                  />
+                  <button
+                    onClick={handleAddModerator}
+                    disabled={adding}
+                    className="inline-flex items-center justify-center rounded-full bg-violet-600 px-4 py-2 text-xs font-medium text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Adicionar moderador
+                  </button>
+                </div>
+              )}
+
               {modFeedback && <div className="text-xs text-slate-600">{modFeedback}</div>}
 
               {isOwner && (
@@ -360,29 +502,46 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                   <div className="grid gap-3 sm:grid-cols-2">
                     <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                       <span>Permitir que moderadores gerenciem moderadores</span>
-                      <input type="checkbox" checked={room.allowModeratorManageModerators !== false} onChange={async (e) => {
-                        try {
-                          await updateDoc(doc(db, "rooms", roomId), { allowModeratorManageModerators: e.target.checked, updatedAt: serverTimestamp() });
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }} className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+                      <input
+                        type="checkbox"
+                        checked={room.allowModeratorManageModerators !== false}
+                        onChange={async (e) => {
+                          try {
+                            await updateDoc(doc(db, "rooms", roomId), {
+                              allowModeratorManageModerators: e.target.checked,
+                              updatedAt: serverTimestamp(),
+                            });
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
                     </label>
                     <label className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
                       <span>Permitir que moderadores excluam a sala</span>
-                      <input type="checkbox" checked={room.allowModeratorDeleteRoom !== false} onChange={async (e) => {
-                        try {
-                          await updateDoc(doc(db, "rooms", roomId), { allowModeratorDeleteRoom: e.target.checked, updatedAt: serverTimestamp() });
-                        } catch (err) {
-                          console.error(err);
-                        }
-                      }} className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+                      <input
+                        type="checkbox"
+                        checked={room.allowModeratorDeleteRoom !== false}
+                        onChange={async (e) => {
+                          try {
+                            await updateDoc(doc(db, "rooms", roomId), {
+                              allowModeratorDeleteRoom: e.target.checked,
+                              updatedAt: serverTimestamp(),
+                            });
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="h-4 w-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+                      />
                     </label>
                   </div>
                 </>
               )}
             </div>
 
+            {/* Histórico */}
             <div className="grid gap-3 rounded-3xl border border-slate-200 bg-white/90 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">Histórico</h3>
@@ -401,30 +560,38 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
                   </button>
                 )}
               </div>
+
               {logs.length === 0 ? (
                 <p className="mt-0 text-xs text-slate-500">Sem eventos recentes.</p>
               ) : (
                 <>
-                <ul className="grid gap-2">
-                  {logs.slice(0, historyLimit).map((l) => (
-                    <li key={l.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
-                      <span>
-                        <b>{l.actorEmail || "Alguém"}</b> {l.type === "added" ? "adicionou" : "removeu"} <b>{l.targetEmail}</b>
-                      </span>
-                      <span className="text-[10px] text-slate-500">{l.createdAt ? l.createdAt.toLocaleString() : ""}</span>
-                    </li>
-                  ))}
-                </ul>
-                {logs.length > historyLimit && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      onClick={() => setHistoryLimit((n) => n + 5)}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
-                    >
-                      Carregar mais
-                    </button>
-                  </div>
-                )}
+                  <ul className="grid gap-2">
+                    {logs.slice(0, historyLimit).map((l) => (
+                      <li
+                        key={l.id}
+                        className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
+                      >
+                        <span>
+                          <b>{l.actorEmail || "Alguém"}</b> {l.type === "added" ? "adicionou" : "removeu"}{" "}
+                          <b>{l.targetEmail}</b>
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {l.createdAt ? l.createdAt.toLocaleString() : ""}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {logs.length > historyLimit && (
+                    <div className="mt-2 flex justify-end">
+                      <button
+                        onClick={() => setHistoryLimit((n) => n + 5)}
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-600 transition hover:border-violet-200 hover:text-violet-600"
+                      >
+                        Carregar mais
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -434,5 +601,3 @@ export const ModeratorView = ({ roomId }: { roomId: string }) => {
     </ProtectedRoute>
   );
 };
-
-
